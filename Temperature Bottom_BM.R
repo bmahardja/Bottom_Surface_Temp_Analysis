@@ -7,12 +7,13 @@ library(sf)
 library(stars)
 library(AICcmodavg)
 library(scales)
+library(cvTools)
 require(patchwork)
 require(geofacet)
 require(gamm4)
 require(dtplyr)
 
-#-------------------------------
+#Initial step to load integrated temperature dataset and region shape files-------------------------------
 #Same steps from Sam's Temperature QAQC R script
 
 # Load Delta Shapefile from Brian
@@ -83,8 +84,8 @@ ggplot()+
 #max_date <- Data%>%group_by(Source)%>%summarise(Date=max(Date))%>%pull(Date)%>%min()
 #Data <- filter(Data, Year<=year(max_date) & !(Source=="SKT" & Field_coords))
 
-#--------------------------------- 
-#Subset data to speed up modeling process
+#Subset data to 2011 and on-------------------------------------------------------
+#As they have the best spatiotemporal coverage
 
 #Create new data frame as to not affect Sam's original dataset
 #Filter just those that have bottom temperature measurements
@@ -127,17 +128,7 @@ ggplot()+
   geom_sf(data=Data_subset)
 dev.off()
 
-#--------------------------------- 
-#Link Dayflow dataset
-#Downloaded from Dayflow CNRA portal on 8/7/2020
-dayflow<-read.csv(file.path("Dayflow","dayflow-results-1997-2019.csv"))
-
-dayflow$Date<-as.Date(dayflow$Date,"%m/%d/%Y")
-
-Data_subset <- left_join(Data_subset %>% mutate(Date=as.Date(Date)), (dayflow %>% mutate(DayflowDeltaFlow=TOT)  %>% select(Date,DayflowDeltaFlow)))
-
-#--------------------------------- 
-#Data evaluation
+#Data evaluation--------------------------------- 
 
 #Look at relationship between bottom and surface temperature using OLS linear regression
 temp_ols <- lm(Temperature_bottom~Temperature, data=Data_subset)
@@ -147,23 +138,16 @@ summary(temp_ols)
 #R^2 = 0.99
 #But coefficient is slightly lower than expected = 0.98
 
-#Evaluate relationship between julian day and flow
-plot(Data_subset$DayflowDeltaFlow ~ Data_subset$Julian_day)
-dayflow_GAM <- gam(DayflowDeltaFlow~ s(Julian_day_s, bs= "cc", k=10), data=Data_subset)
-plot(dayflow_GAM)
-gam.check(dayflow_GAM)
-#Leave it alone for now. Doesn't seem like Flow is an important variable
-#Would need to revisit this to adjust flow by julian day if we do end up using it
 
 
-#--------------------------------
-# Model Runs
+#Initial Model Runs--------------------------------
+#Models with just latitude and longitude, and surface temperature OR julian day
 
 # Calculate difference of bottom temperature from surface temperature as response variable
 Data_subset$Temperature_difference <- Data_subset$Temperature_bottom-Data_subset$Temperature
 hist(Data_subset$Temperature_difference)
-#Standardize some covariates
-Data_subset <- Data_subset %>% mutate_at(vars(DayflowDeltaFlow, Temperature), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T)))
+#Standardize temperature covariate
+Data_subset$Temperature_s<-(Data_subset$Temperature-mean(Data_subset$Temperature))/sd(Data_subset$Temperature)
 
 #Start models
 
@@ -196,39 +180,27 @@ AICc(model_bottom_02)
 #BIC=6711.553
 
 
-model_bottom_03 <- bam(Temperature_difference ~ te(Longitude_s, Latitude_s, Temperature_s, d=c(2,1), bs=c("tp"), k=c(40, 25, 7)) + s(Time_num_s, k=5, bs="cc") + s(DayflowDeltaFlow, bs="tp", k=8),
-                       data = Data_subset, method="fREML", discrete=T, nthreads=4)
-gam.check(model_bottom_03)
-summary(model_bottom_03)
-#plot(model_bottom_03)
-AICc(model_bottom_03)
-#AICc=5954.241
-#R^2=0.143
-#BIC=6547.001
-#Doesn't change R2, but reduced AICc
-#Ignore flow for now
-
 #Combine temperature and time in the tensor smooth
-model_bottom_04 <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s,Temperature_s, Time_num_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 5)),
+model_bottom_03 <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s,Temperature_s, Time_num_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 5)),
                        data = Data_subset, method="fREML", discrete=T, nthreads=4)
 
-summary(model_bottom_04)
-plot(model_bottom_04)
-gam.check(model_bottom_04)
-AICc(model_bottom_04)
+summary(model_bottom_03)
+plot(model_bottom_03)
+gam.check(model_bottom_03)
+AICc(model_bottom_03)
 #AICc=5648.825
 #R^2=0.213
 #BIC=7034.833
 #Changed R2 substantially
 
 
-model_bottom_05 <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s,Temperature_s, Time_num_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 5))+ Year_fac,
+model_bottom_04 <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s,Temperature_s, Time_num_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 5))+ Year_fac,
                        data = Data_subset, method="fREML", discrete=T, nthreads=4)
 
-summary(model_bottom_05)
-gam.check(model_bottom_05)
-AICc(model_bottom_05)
-plot(model_bottom_05)
+summary(model_bottom_04)
+gam.check(model_bottom_04)
+AICc(model_bottom_04)
+plot(model_bottom_04)
 #AICc=5586.525
 #R^2=0.221
 #BIC=7024.829
@@ -237,51 +209,56 @@ plot(model_bottom_05)
 #Perhaps consider using both Julian Day and temperature (after adjusting temperature and Julian day)
 
 
-#---------------------------------------------
+#Temperature Anomaly Model---------------------------------------------
 ##Julian day and temperature model
-temperature_GAM<- gam(Temperature ~ s(Julian_day_s,bs="cc",k=5),data=Data_subset)
-summary(temperature_GAM)
-gam.check(temperature_GAM)
-plot(temperature_GAM)
+temperature_anomaly_GAM<- gam(Temperature ~ s(Julian_day_s,bs="cc",k=5),data=Data_subset)
+summary(temperature_anomaly_GAM)
+gam.check(temperature_anomaly_GAM)
+plot(temperature_anomaly_GAM)
+
+##Per discussion with Sam, construct model with longitude and latitude on top julian day instead
+temperature_anomaly_GAM_final<- gam(Temperature ~ te(Latitude_s,Longitude_s,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(20,5)),data=Data_subset)
+summary(temperature_anomaly_GAM_final)
+#K index is too low at 0.72, and edf is pretty close to k', but let's go with this for now
+gam.check(temperature_anomaly_GAM_final)
+plot(temperature_anomaly_GAM_final)
+
 #Add term to the dataset
-Data_subset$Temperature_prediction <-predict(temperature_GAM,Data_subset)
-Data_subset$Residual_Temperature <-Data_subset$Temperature - Data_subset$Temperature_prediction 
+Data_subset$Temperature_prediction <-predict(temperature_anomaly_GAM_final,Data_subset)
+Data_subset$Temperature_anomaly <-Data_subset$Temperature - Data_subset$Temperature_prediction 
+hist(Data_subset$Temperature_anomaly)
 
-#LOOK AT TYPE=="TERMS" FOR PREDICT.BAM and feed newdata (give a range of julian day)
-#CALL IT TEMPERATURE ANOMALY
+#From Sam: Look at TYPE=="TERMS" FOR PREDICT.BAM and feed newdata (give a range of julian day) - for further evaluation of temperature_anomaly_GAM_final
 
-#Run model with Julian day and residual temperature
-model_bottom_01_r <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Residual_Temperature, Julian_day_s,Time_num_s, d=c(2,1,1,1), bs=c("tp", "tp","cc","cc"), k=c(40, 25, 7, 7, 5)),
-                       data = Data_subset, method="fREML", discrete=T, nthreads=4)
-summary(model_bottom_01_r)
-AICc(model_bottom_01_r)
-#AICc=4972.471
-#R^2=0.309
-#BIC = 7690.945
-gam.check(model_bottom_01_r)
-plot(model_bottom_01_r)
-#Best fit so far
+#Second batch of model runs---------------------------------------------
+#Run models with Julian day and "temperature anomaly"
 
-model_bottom_02_r <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Residual_Temperature, Julian_day_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 7)) + s(Time_num_s, k=5, bs="cc") ,
+#model_bottom_01_r <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Temperature_anomaly, Julian_day_s,Time_num_s, d=c(2,1,1,1), bs=c("tp", "tp","cc","cc"), k=c(40, 25, 7, 7, 5)),
+#                       data = Data_subset, method="fREML", discrete=T, nthreads=4)
+#summary(model_bottom_01_r)
+#AICc(model_bottom_01_r)
+#No longer relevant
+
+model_bottom_02_r <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Temperature_anomaly, Julian_day_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 7)) + s(Time_num_s, k=5, bs="cc") ,
                          data = Data_subset, method="fREML", discrete=T, nthreads=4)
-#summary(model_bottom_02_r)
-#AICc(model_bottom_02_r)
+summary(model_bottom_02_r)
+AICc(model_bottom_02_r)
 
-#AICc=5507.631
-#R^2=0.229
-#BIC = 6937.084
+#AICc=5510.468
+#R^2=0.226
+#BIC = 6799.042
 #gam.check(model_bottom_02_r)
 #plot(model_bottom_02_r)
 
 
-model_bottom_03_r <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Residual_Temperature, Julian_day_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 7)) ,
+model_bottom_03_r <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Temperature_anomaly, Julian_day_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 7)) ,
                          data = Data_subset, method="fREML", discrete=T, nthreads=4)
 summary(model_bottom_03_r)
 AICc(model_bottom_03_r)
-#AICc=5513.64
+#AICc=5494.158
 #R^2=0.228
 BIC(model_bottom_03_r)
-#BIC = 6931.071
+#BIC = 6813.749
 
 #Collinearity between residual temperature and Lat, Long, and Time of Day
 plot(Data_subset$Residual_Temperature~Data_subset$Latitude_s)
@@ -293,6 +270,31 @@ plot(gam(Residual_Temperature ~ s(Longitude_s),data = Data_subset))
 plot(Data_subset$Residual_Temperature~Data_subset$Time_num_s)
 plot(gam(Residual_Temperature ~ s(Time_num_s),data = Data_subset))
 
+#Cross validation test ---------------------------------------------------------------
+#with K=5
+k <- 5 #the number of folds
+
+set.seed(2020)
+folds <- cvFolds(NROW(Data_subset), K=k)
+
+Data_subset$holdoutpred <- rep(0,nrow(Data_subset))
+
+for(i in 1:k){
+  train <- Data_subset[folds$subsets[folds$which != i], ] #Set the training set
+  validation <- Data_subset[folds$subsets[folds$which == i], ] #Set the validation set
+  
+  newlm <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Temperature_anomaly, Julian_day_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 7)) ,
+               data = train, method="fREML", discrete=T, nthreads=4) #Get your new linear model (just fit on the train data)
+  newpred <- predict(newlm,newdata=validation) #Get the predicitons for the validation set (from the model just fit on the train data)
+  
+  Data_subset[folds$subsets[folds$which == i], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+}
+
+Data_subset$holdoutpred_CorrectSign<-ifelse(Data_subset$Temperature_difference==0,NA,(ifelse(Data_subset$Temperature_difference>0&Data_subset$holdoutpred>0|Data_subset$Temperature_difference<0&Data_subset$holdoutpred<0,1,0)))
+
+summary(Data_subset$holdoutpred_CorrectSign)
+#Predicted the correct sign 75% of the time (0.75)
+
 #-----------------------------------------
 
 #Attempt to create prediction map
@@ -303,7 +305,7 @@ WQ_pred<-function(Full_data=Data_subset,
                   Delta_water=spacetools::Delta,
                   Stations = WQ_stations,
                   n=75, 
-                  Residual_Temps=c(-2,0,2),
+                  Temps_Anomaly=c(-2,0,2),
                   Julian_days=yday(ymd(paste("2001", c(1,4,7,10), "15", sep="-"))), #Jan, Apr, Jul, and Oct 15 for a non-leap year
                   Time_num=c(9*60*60,12*60*60,15*60*60) # 12PM x 60 seconds x 60 minutes
 ){
@@ -341,7 +343,7 @@ WQ_pred<-function(Full_data=Data_subset,
   
   
   # Create full dataset for predictions
-  newdata<-expand.grid(Residual_Temperature= Residual_Temps,
+  newdata<-expand.grid(Temperature_anomaly= Temps_Anomaly,
                        Location=1:nrow(Points),
                        Julian_day=Julian_days,
                        Time_num=Time_num)%>% # Create all combinations of predictor variables
@@ -367,83 +369,33 @@ WQ_pred<-function(Full_data=Data_subset,
 newdata_bottom <- WQ_pred(Full_data=Data_subset, 
                         Julian_days = yday(ymd(paste("2001", 1:12, "15", sep="-"))))
 
+
 #Add prediction from model
-model_01r_predictions<-predict(model_bottom_01_r, newdata=newdata_bottom, type="response", se.fit=TRUE, discrete=T, n.threads=3) # Create predictions
+model_03r_predictions<-predict(model_bottom_03_r, newdata=newdata_bottom, type="response", se.fit=TRUE, discrete=T, n.threads=3) # Create predictions
 
 
 newdata<-newdata_bottom%>%
-  mutate(Prediction=model_01r_predictions$fit)%>%
-  mutate(SE=model_01r_predictions$se.fit,
+  mutate(Prediction=model_03r_predictions$fit)%>%
+  mutate(SE=model_03r_predictions$se.fit,
          L95=Prediction-SE*1.96,
          U95=Prediction+SE*1.96)
 
-#Convert time back to something easy to understand (not sure if this is correct)
-newdata$Time <- format(as.POSIXct((newdata$Time_num), origin = "2011-01-01", tz = "UTC"), "%H:%M")
-unique(newdata$Time)
 
 #Create figures for each season, time of day, and residual temperature
-png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_Winter.png"), units="in",type="cairo", bg="white", height=14, 
+png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_08-26-2020.png"), units="in",type="cairo", bg="white", height=18, 
     width=20, res=400, pointsize=20)
-ggplot(data=(newdata %>% filter(Season=="Winter")))+
+ggplot(data=newdata)+
   geom_sf(aes(colour=Prediction),pch=15)+
   scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata$Prediction),max(newdata$Prediction),(max(newdata$Prediction)-min(newdata$Prediction))/5))+
   theme_dark()+
-  facet_grid(Time~Residual_Temperature)+
+  facet_grid(Season~Temperature_anomaly)+
   theme(plot.title=element_text(size=28), 
         axis.text.x=element_text(size=21, color="black"), 
         axis.text.y = element_text(size=20, color="black"), 
         axis.title.x = element_text(size = 22, angle = 00), 
         axis.title.y = element_text(size = 22, angle = 90),
         strip.text = element_text(size = 20))+
-  labs(x="Temperature Deviance from Julian Day", y="Time of Day",title="Winter (Jan 15)")
-dev.off()
-
-png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_Spring.png"), units="in",type="cairo", bg="white", height=14, 
-    width=20, res=400, pointsize=20)
-ggplot(data=(newdata %>% filter(Season=="Spring")))+
-  geom_sf(aes(colour=Prediction),pch=15)+
-  scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata$Prediction),max(newdata$Prediction),(max(newdata$Prediction)-min(newdata$Prediction))/5))+
-  theme_dark()+
-  facet_grid(Time~Residual_Temperature)+
-  theme(plot.title=element_text(size=28), 
-        axis.text.x=element_text(size=21, color="black"), 
-        axis.text.y = element_text(size=20, color="black"), 
-        axis.title.x = element_text(size = 22, angle = 00), 
-        axis.title.y = element_text(size = 22, angle = 90),
-        strip.text = element_text(size = 20))+
-  labs(x="Temperature Deviance from Julian Day", y="Time of Day",title="Spring (Apr 15)")
-dev.off()
-
-png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_Summer.png"), units="in",type="cairo", bg="white", height=14, 
-    width=20, res=400, pointsize=20)
-ggplot(data=(newdata %>% filter(Season=="Summer")))+
-  geom_sf(aes(colour=Prediction),pch=15)+
-  scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata$Prediction),max(newdata$Prediction),(max(newdata$Prediction)-min(newdata$Prediction))/5))+
-  theme_dark()+
-  facet_grid(Time~Residual_Temperature)+
-  theme(plot.title=element_text(size=28), 
-        axis.text.x=element_text(size=21, color="black"), 
-        axis.text.y = element_text(size=20, color="black"), 
-        axis.title.x = element_text(size = 22, angle = 00), 
-        axis.title.y = element_text(size = 22, angle = 90),
-        strip.text = element_text(size = 20))+
-  labs(x="Temperature Deviance from Julian Day", y="Time of Day",title="Summer (Jul 15)")
-dev.off()
-
-png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_Fall.png"), units="in",type="cairo", bg="white", height=14, 
-    width=20, res=400, pointsize=20)
-ggplot(data=(newdata %>% filter(Season=="Fall")))+
-  geom_sf(aes(colour=Prediction),pch=15)+
-  scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata$Prediction),max(newdata$Prediction),(max(newdata$Prediction)-min(newdata$Prediction))/5))+
-  theme_dark()+
-  facet_grid(Time~Residual_Temperature)+
-  theme(plot.title=element_text(size=28), 
-        axis.text.x=element_text(size=21, color="black"), 
-        axis.text.y = element_text(size=20, color="black"), 
-        axis.title.x = element_text(size = 22, angle = 00), 
-        axis.title.y = element_text(size = 22, angle = 90),
-        strip.text = element_text(size = 20))+
-  labs(x="Temperature Deviance from Julian Day", y="Time of Day",title="Fall (Oct 15)")
+  labs(x="Temperature Deviance from Julian Day", y="Season")
 dev.off()
 
 
@@ -458,7 +410,7 @@ mygrid <- data.frame(
 )
 
 Data_resid<-Data_subset%>%
-  mutate(Residuals = model_bottom_01_r$residuals,Prediction = model_bottom_01_r$linear.predictors)
+  mutate(Residuals = model_bottom_03_r$residuals,Prediction = model_bottom_03_r$linear.predictors)
 
 Resid_sum<-Data_resid%>%
   lazy_dt()%>%
@@ -479,7 +431,7 @@ p_resid<-ggplot(Resid_sum)+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), panel.grid=element_blank(), panel.background = element_rect(fill="black"))
 
-ggsave(plot=p_resid, file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Residuals 2020-08-12.png"), device=png(), width=20, height=12, units="in")
+ggsave(plot=p_resid, file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Residuals 2020-08-26.png"), device=png(), width=20, height=12, units="in")
 
 #See how often the model predicts the right sign
 #Remove data points where there's zero difference between surface and bottom temperature
@@ -488,7 +440,7 @@ Data_resid_sign<-Data_resid %>% filter(Temperature_difference!=0)
 Data_resid_sign$CorrectSign<-ifelse(Data_resid_sign$Temperature_difference>0&Data_resid_sign$Prediction>0|Data_resid_sign$Temperature_difference<0&Data_resid_sign$Prediction<0,1,0)
 
 summary(Data_resid_sign$CorrectSign)
-#Mean 0.796
+#Mean 0.75
 
 Data_resid_sign_sum<-Data_resid_sign%>%
   lazy_dt()%>%
@@ -503,48 +455,24 @@ resid_sign<-ggplot(Data_resid_sign_sum)+
   geom_tile(aes(x=Year, y=Month, fill=CorrectSign))+
   scale_fill_gradient(low = "red",
                       high = "blue", breaks=seq(0,1, by=0.2),
-                       guide=guide_colorbar(barheight=40))+
+                      guide=guide_colorbar(barheight=40))+
   scale_x_continuous(breaks=unique(Data_resid_sign_sum$Year), labels = if_else((unique(Data_resid_sign_sum$Year)/2)%% 2 == 0, as.character(unique(Data_resid_sign_sum$Year)), ""))+
   scale_y_continuous(breaks=unique(Data_resid_sign_sum$Month), labels = if_else(unique(Data_resid_sign_sum$Month)%% 2 == 0, as.character(unique(Data_resid_sign_sum$Month)), ""))+
   facet_geo(~SubRegion, grid=mygrid, labeller=label_wrap_gen())+
   theme_bw()+
   theme(axis.text.x=element_text(angle=45, hjust=1), panel.grid=element_blank(), panel.background = element_rect(fill="black"))
 
-ggsave(plot=resid_sign, file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Correct Prediction 2020-08-12.png"), device=png(), width=20, height=12, units="in")
-
-#---------------------------------------------------------------
-#Cross validation test with K=5
-
-set.seed(2020)
-folds <- cvFolds(NROW(Data_subset), K=k)
-
-Data_subset$holdoutpred <- rep(0,nrow(Data_subset))
-
-for(i in 1:k){
-  train <- Data_subset[folds$subsets[folds$which != i], ] #Set the training set
-  validation <- Data_subset[folds$subsets[folds$which == i], ] #Set the validation set
-  
-  newlm <- bam(Temperature_difference ~  te(Latitude_s,Longitude_s, Residual_Temperature, Julian_day_s, d=c(2,1,1), bs=c("tp", "tp","cc"), k=c(40, 25, 7, 7)) ,
-               data = train, method="fREML", discrete=T, nthreads=4) #Get your new linear model (just fit on the train data)
-  newpred <- predict(newlm,newdata=validation) #Get the predicitons for the validation set (from the model just fit on the train data)
-  
-  Data_subset[folds$subsets[folds$which == i], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
-}
-
-Data_subset$holdoutpred_CorrectSign<-ifelse(Data_subset$Temperature_difference==0,NA,(ifelse(Data_subset$Temperature_difference>0&Data_subset$holdoutpred>0|Data_subset$Temperature_difference<0&Data_subset$holdoutpred<0,1,0)))
-
-summary(Data_subset$holdoutpred_CorrectSign)
-#Predicted the correct sign 74% of the time (0.74)
+ggsave(plot=resid_sign, file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Correct Prediction 2020-08-26.png"), device=png(), width=20, height=12, units="in")
 
 #---------------------------------------------------------------
 #Test dataset from pre-2011
 test_dataset_hist<-Data %>% filter(year(Date)<2011,!is.na(Temperature_bottom))
 test_dataset_hist$Temperature_difference <- test_dataset_hist$Temperature_bottom-test_dataset_hist$Temperature
 
-test_dataset_hist$Temperature_prediction <-predict(temperature_GAM,test_dataset_hist)
-test_dataset_hist$Residual_Temperature <-test_dataset_hist$Temperature - test_dataset_hist$Temperature_prediction 
+test_dataset_hist$Temperature_prediction <-predict(temperature_anomaly_GAM_final,test_dataset_hist)
+test_dataset_hist$Temperature_anomaly <-test_dataset_hist$Temperature - test_dataset_hist$Temperature_prediction 
 
-test_dataset_hist$Temperature_difference_prediction<-predict(model_bottom_01_r,test_dataset_hist)
+test_dataset_hist$Temperature_difference_prediction<-predict(model_bottom_03_r,test_dataset_hist)
 
 plot(test_dataset_hist$Temperature_difference~test_dataset_hist$Temperature_difference_prediction)
 
@@ -561,7 +489,7 @@ test_dataset_sign<-test_dataset_hist %>% filter(Temperature_difference!=0)
 test_dataset_sign$CorrectSign<-ifelse(test_dataset_sign$Temperature_difference>0&test_dataset_sign$Temperature_difference_prediction>0|test_dataset_sign$Temperature_difference<0&test_dataset_sign$Temperature_difference_prediction<0,1,0)
 
 summary(test_dataset_sign$CorrectSign)
-#Mean of 0.6349
+#Mean of 0.6384
 
 #Try using model_bottom_03_r (since it has lowest BIC)
 test_dataset_hist$Temperature_difference_prediction<-predict(model_bottom_03_r,test_dataset_hist)
