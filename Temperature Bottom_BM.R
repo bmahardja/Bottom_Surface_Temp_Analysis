@@ -293,11 +293,15 @@ for(i in 1:k){
 Data_subset$holdoutpred_CorrectSign<-ifelse(Data_subset$Temperature_difference==0,NA,(ifelse(Data_subset$Temperature_difference>0&Data_subset$holdoutpred>0|Data_subset$Temperature_difference<0&Data_subset$holdoutpred<0,1,0)))
 
 summary(Data_subset$holdoutpred_CorrectSign)
-#Predicted the correct sign 75% of the time (0.75)
+#Predicted the correct sign 75% of the time (0.7473)
 
-#-----------------------------------------
+#Create prediction map-----------------------------------------
 
-#Attempt to create prediction map
+#Add categories to temperature anomaly to ensure that we don't plot predictions in which we have no data for
+Data_subset$Temperature_anomaly_category<-ifelse(Data_subset$Temperature_anomaly>(-1.5)&Data_subset$Temperature_anomaly<1.5,0,NA)
+Data_subset$Temperature_anomaly_category<-ifelse(Data_subset$Temperature_anomaly<(-1.5),-2,Data_subset$Temperature_anomaly_category)
+Data_subset$Temperature_anomaly_category<-ifelse(Data_subset$Temperature_anomaly>1.5,2,Data_subset$Temperature_anomaly_category)
+
 
 #Function from Sam to create prediction dataset
 WQ_pred<-function(Full_data=Data_subset,
@@ -305,9 +309,8 @@ WQ_pred<-function(Full_data=Data_subset,
                   Delta_water=spacetools::Delta,
                   Stations = WQ_stations,
                   n=75, 
-                  Temps_Anomaly=c(-2,0,2),
-                  Julian_days=yday(ymd(paste("2001", c(1,4,7,10), "15", sep="-"))), #Jan, Apr, Jul, and Oct 15 for a non-leap year
-                  Time_num=c(9*60*60,12*60*60,15*60*60) # 12PM x 60 seconds x 60 minutes
+                  Residual_Temps=c(-2,0,2),
+                  Julian_days=yday(ymd(paste("2001", c(1,4,7,10), "15", sep="-"))) #Jan, Apr, Jul, and Oct 15 for a non-leap year
 ){
   
   # Create point locations on a grid for predictions
@@ -335,7 +338,7 @@ WQ_pred<-function(Full_data=Data_subset,
   # Create dataset for each year and season showing which subregions were sampled
   Data_effort <- Full_data%>%
     st_drop_geometry()%>%
-    group_by(SubRegion, Season)%>%
+    group_by(SubRegion, Season,Temperature_anomaly_category)%>%
     summarise(N=n())%>%
     ungroup()%>%
     left_join(Delta_subregions, by="SubRegion")%>%
@@ -343,15 +346,14 @@ WQ_pred<-function(Full_data=Data_subset,
   
   
   # Create full dataset for predictions
-  newdata<-expand.grid(Temperature_anomaly= Temps_Anomaly,
+  newdata<-expand.grid(Temperature_anomaly= Residual_Temps,
                        Location=1:nrow(Points),
-                       Julian_day=Julian_days,
-                       Time_num=Time_num)%>% # Create all combinations of predictor variables
+                       Julian_day=Julian_days)%>% # Create all combinations of predictor variables
     left_join(Points, by="Location")%>% #Add Lat/Longs to each location
     mutate(Latitude_s=(Latitude-mean(Full_data$Latitude, na.rm=T))/sd(Full_data$Latitude, na.rm=T), # Standardize each variable based on full dataset for model
            Longitude_s=(Longitude-mean(Full_data$Longitude, na.rm=T))/sd(Full_data$Longitude, na.rm=T),
            Julian_day_s = (Julian_day-mean(Full_data$Julian_day, na.rm=T))/sd(Full_data$Julian_day, na.rm=T),
-           Time_num_s=(Time_num-mean(Full_data$Time_num, na.rm=T))/sd(Full_data$Time_num, na.rm=T),
+           Temperature_anomaly_category=Temperature_anomaly,
            Season=case_when(Julian_day<=80 | Julian_day>=356 ~ "Winter", # Create a variable for season
                             Julian_day>80 & Julian_day<=172 ~ "Spring",
                             Julian_day>173 & Julian_day<=264 ~ "Summer",
@@ -360,12 +362,13 @@ WQ_pred<-function(Full_data=Data_subset,
     st_transform(crs=st_crs(Delta_subregions))%>% # transform to crs of Delta shapefile
     st_join(Delta_subregions, join = st_intersects)%>%
     filter(!is.na(SubRegion))%>% # Make sure all points are within our desired subregions
-    left_join(Data_effort, by=c("SubRegion", "Season"))%>% # Use the Data_effort key created above to remove points in subregions that were not sampled that region, season, and year.
+    left_join(Data_effort, by=c("SubRegion", "Season","Temperature_anomaly_category"))%>% # Use the Data_effort key created above to remove points in subregions that were not sampled that region, season, and year.
     filter(!is.na(N))
   return(newdata)
 }
 
 #Use the function to create prediction data frame
+
 newdata_bottom <- WQ_pred(Full_data=Data_subset, 
                         Julian_days = yday(ymd(paste("2001", 1:12, "15", sep="-"))))
 
@@ -382,7 +385,7 @@ newdata<-newdata_bottom%>%
 
 
 #Create figures for each season, time of day, and residual temperature
-png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_08-26-2020.png"), units="in",type="cairo", bg="white", height=18, 
+png(filename=file.path("~/GIT Hub/WQ-discrete/Bottom_Surface_Temp_Results","Model_prediction_map_08-27-2020.png"), units="in",type="cairo", bg="white", height=18, 
     width=20, res=400, pointsize=20)
 ggplot(data=newdata)+
   geom_sf(aes(colour=Prediction),pch=15)+
@@ -395,7 +398,7 @@ ggplot(data=newdata)+
         axis.title.x = element_text(size = 22, angle = 00), 
         axis.title.y = element_text(size = 22, angle = 90),
         strip.text = element_text(size = 20))+
-  labs(x="Temperature Deviance from Julian Day", y="Season")
+  labs(x="Temperature Anomaly", y="Season")
 dev.off()
 
 
@@ -508,6 +511,20 @@ test_dataset_sign$CorrectSign<-ifelse(test_dataset_sign$Temperature_difference>0
 
 summary(test_dataset_sign$CorrectSign)
 #Mean of 0.6329
+
+#---------------------------------------------------------------
+#Data effort evaluation
+
+Data_effort <- Data_subset%>%
+  st_drop_geometry()%>%
+  group_by(SubRegion, Season,Temperature_anomaly_category)%>%
+  summarise(N=n())%>%
+  ungroup()%>%
+  left_join(Delta, by="SubRegion")%>%
+  dplyr::select(-geometry)
+
+Data_view<- Data_subset%>% filter(SubRegion=="Lower Sacramento River Ship Channel",Season=="Spring",Temperature_anomaly_category==(-2))
+Data_view<- Data_subset%>% filter(SubRegion=="Liberty Island",Season=="Spring",Temperature_anomaly_category==(-2))
 
 #---------------------------------------------------------------
 #Regression Tree exploration
