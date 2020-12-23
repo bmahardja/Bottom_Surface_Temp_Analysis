@@ -109,6 +109,11 @@ Data<-Data%>%
 #Filter just those that have bottom temperature measurements
 Data_subset<- Data %>% filter(!is.na(Temperature_bottom))
 
+#Year variable is actually water year
+#Change
+Data_subset<-Data_subset %>% rename(WaterYear=Year)
+Data_subset$Year<-year(Data_subset$Date)
+
 #Convert data to UTM since lat and long don't seem to work well with soap-film
 cord.dec <- SpatialPoints(cbind(Data_subset$Longitude, -Data_subset$Latitude), proj4string = CRS("+proj=longlat +datum=WGS84"))
 cord.UTM <- spTransform(cord.dec, CRS("+proj=utm +zone=10 +datum=WGS84"))
