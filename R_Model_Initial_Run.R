@@ -44,28 +44,17 @@ m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = bor
 
 knots_edit<-knots[-5,]
 
-knots_edit<-knots_edit[-8,]
-knots_edit<-knots_edit[-8,]
-knots_edit<-knots_edit[-8,]
-knots_edit<-knots_edit[-8,]
-knots_edit<-knots_edit[-9,]
-knots_edit<-knots_edit[-13,]
-knots_edit<-knots_edit[-13,]
-knots_edit<-knots_edit[-13,]
-knots_edit<-knots_edit[-13,]
-knots_edit<-knots_edit[-13,]
-knots_edit<-knots_edit[-22,]
-knots_edit<-knots_edit[-22,]
-knots_edit<-knots_edit[-22,]
-knots_edit<-knots_edit[-22,]
-knots_edit<-knots_edit[-28,]
-knots_edit<-knots_edit[-36,]
-knots_edit<-knots_edit[-86,]
-knots_edit<-knots_edit[-85,]
-knots_edit<-knots_edit[-84,]
-
-m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=5000)),
+m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=500)),
               data = temp_dataset, method = "fREML", discrete=T, nthreads=4, knots = knots_edit)
+
+knots_edit<-knots_edit[-6,]
+knots_edit<-knots_edit[-9,]
+knots_edit<-knots_edit[-10,]
+knots_edit<-knots_edit[-14,]
+knots_edit<-knots_edit[-14,]
+knots_edit<-knots_edit[-17,]
+
+
 
 plot(Delta.aut, col="grey")
 points(knots, pch=21, bg="red")
