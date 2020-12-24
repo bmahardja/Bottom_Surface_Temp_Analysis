@@ -109,18 +109,31 @@ hist(temp_dataset$Temperature_anomaly_spatial)
 model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(40)),
                        data = temp_dataset, method="fREML", discrete=T, nthreads=4)
 #gam.check(model_01_thinspline_xy)
+#summary(model_01_thinspline_xy)
+#R-sq.(adj) =   0.15   Deviance explained = 22.7%
 
 model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
                               data = temp_dataset, method="fREML", discrete=T, nthreads=4)
 #gam.check(model_02_thinspline_xy_jd)
+#summary(model_02_thinspline_xy_jd)
+#R-sq.(adj) =   0.22   Deviance explained = 22.7%
 
-model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+model_03_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
+                                 data = temp_dataset, method="fREML", discrete=T, nthreads=4)
+#gam.check(model_03_thinspline_xy_ta)
+#summary(model_03_thinspline_xy_ta)
+#R-sq.(adj) =  0.315   Deviance explained = 32.4%
+
+model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
                               data = temp_dataset, method="fREML", discrete=T, nthreads=4)
-#gam.check(model_03_thinspline_xy_jd_ta)
-summary(model_03_thinspline_xy_jd_ta)
+#gam.check(model_04_thinspline_xy_jd_ta)
+#summary(model_04_thinspline_xy_jd_ta)
+#R-sq.(adj) =   0.41   Deviance explained =   43%
 
-
-
+model_05_thinspline_xy_jd_tas <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+                                    data = temp_dataset, method="fREML", discrete=T, nthreads=4)
+summary(model_05_thinspline_xy_jd_tas)
+#R-sq.(adj) =   0.41   Deviance explained =   43%
 
 
 
