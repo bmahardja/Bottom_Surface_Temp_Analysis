@@ -32,7 +32,8 @@ nr <- seq(1,length(borderlist))
 border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
 
 #Use custom knots
-knots <- read.csv("custom_knots.csv")
+knots_custom <- read.csv("knots_custom.csv")
+knots_grid <- read.csv("knots_grid.csv")
 
 
 ######################################################################################################
@@ -133,22 +134,33 @@ model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_
 model_05_thinspline_xy_jd_tas <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
                                     data = temp_dataset, method="fREML", discrete=T, nthreads=4)
 summary(model_05_thinspline_xy_jd_tas)
-#R-sq.(adj) =   0.41   Deviance explained =   43%
+#gam.check(model_05_thinspline_xy_jd_tas)
+#R-sq.(adj) =   0.41   Deviance explained =   43.1%
+AICc(model_05_thinspline_xy_jd_tas)
+#8382.725
 
-
-
+model_06_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
+                           te(x, y, Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
+                         data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+summary(model_06_soapfilm_xy_jd_ta)
+gam.check(model_06_soapfilm_xy_jd_ta)
+#R-sq.(adj) =  0.413   Deviance explained = 43.3%
+AICc(model_06_soapfilm_xy_jd_ta)
+#8345.612
 
 
 
 
 ############### Fit test model  ######################
-m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=500)),
-              data = temp_dataset, method = "fREML", discrete=T, nthreads=3, knots = knots)
+#m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=1000)),
+#              data = temp_dataset, method = "fREML", discrete=T, nthreads=3, knots = knots_grid)
+#^ this one worked
+#Test with 5000 nmax and the knots_custom didn't work and gave an error
+knots_edit<-knots_grid[-7,]
 
-knots_edit<-knots[-5,]
 
-m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=500)),
-              data = temp_dataset, method = "fREML", discrete=T, nthreads=4, knots = knots_edit)
+m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=1000)),
+              data = temp_dataset, method = "fREML", discrete=T, nthreads=3, knots = knots_edit)
 
 knots_edit<-knots_edit[-6,]
 knots_edit<-knots_edit[-9,]

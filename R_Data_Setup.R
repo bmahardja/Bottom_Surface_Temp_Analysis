@@ -155,7 +155,7 @@ points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, 
 #Only 51 points are outside the boundaries
 
 ###################################################
-################# Set up knots ############
+################# Set up a couple of knots ############
 ###################################################
 
 river_km_points <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "River_km_UTM10.shp"))
@@ -199,6 +199,20 @@ ggplot()+
 knots_interior_reduced<-knots_sf_edited%>%
   st_drop_geometry()
 
+#####---------------
+## Set up a different knots set up using 20x20 points
+N <- 20
+gx <- seq(min(Delta.xy.aut[,1]), max(Delta.xy.aut[,1]), len = N)
+gy <- seq(min(Delta.xy.aut[,2]), max(Delta.xy.aut[,2]), len = N)
+gp <- expand.grid(gx, gy)
+names(gp) <- c("x","y")
+knots_grid <- gp[with(gp, inSide(border.aut, x, y)), ]
+row.names(knots_grid)<-1:nrow(knots_grid)
+
+
+plot(Delta.aut, col="grey")
+points(knots_grid, pch=21, bg="orange")
+text(knots_grid, labels=rownames(knots_grid))
 
 ###################################################
 ################# Export data and knots ############
@@ -209,7 +223,9 @@ knots_interior_reduced<-knots_sf_edited%>%
 plot(Delta.aut, col="grey")
 points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg="blue")
 points(knots_interior_reduced, pch=21, bg="red")
+points(knots_grid, pch=21, bg="white")
 
 Data_subset_post_2011_inside$geometry<-NULL
 write.csv(Data_subset_post_2011_inside, file = "temperature_dataset.csv",row.names = F)
-write.csv(knots_interior_reduced, file = "custom_knots.csv",row.names = F)
+write.csv(knots_interior_reduced, file = "knots_custom.csv",row.names = F)
+write.csv(knots_grid, file = "knots_grid.csv",row.names = F)
