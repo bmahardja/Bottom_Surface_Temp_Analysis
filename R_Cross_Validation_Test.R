@@ -135,6 +135,7 @@ for(i in 1){
   newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
   
   Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+  message(paste0("Finished run ", j, "/",k))
   }
 }
 
@@ -153,6 +154,7 @@ for(i in 2){
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
   }
 }
 
@@ -172,6 +174,7 @@ for(i in 3){
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
   }
 }
 
@@ -190,19 +193,40 @@ for(i in 4){
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
   }
 }
-
 cor(Cross_Validation_Results[[4]]$holdoutpred, Cross_Validation_Results[[4]]$Temperature_difference, method="pearson")
-#0.6568905
 
+########## MODEL 05 - Soap-film smoother
 
-
+for(i in 5){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
+                       te(x, y, Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
+                     data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
 
 #Save cross validation results
 saveRDS(Cross_Validation_Results, file="Cross_Validation_Results.Rds")
 
 
+cor(Cross_Validation_Results[[4]]$holdoutpred, Cross_Validation_Results[[4]]$Temperature_difference, method="pearson")
+#0.6568905
+
+cor(Cross_Validation_Results[[5]]$holdoutpred, Cross_Validation_Results[[5]]$Temperature_difference, method="pearson")
+#0.6586982
+
+Cross_Validation_Results[[5]]$holdoutpred_CorrectSign<-ifelse(Cross_Validation_Results[[5]]$Temperature_difference==0,NA,(ifelse(Cross_Validation_Results[[5]]$Temperature_difference>0&Cross_Validation_Results[[5]]$holdoutpred>0|Cross_Validation_Results[[5]]$Temperature_difference<0&Cross_Validation_Results[[5]]$holdoutpred<0,1,0)))
+summary(Cross_Validation_Results[[5]]$holdoutpred_CorrectSign)
 
 
 #####################################################Extra code
