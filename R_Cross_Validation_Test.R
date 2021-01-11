@@ -188,7 +188,7 @@ for(i in 4){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5), by=WaterYear) + WaterYear,
                      data = temp_dataset, method="fREML", discrete=T, nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
@@ -218,15 +218,62 @@ for(i in 5){
 #Save cross validation results
 saveRDS(Cross_Validation_Results, file="Cross_Validation_Results.Rds")
 
+#Read saved cross validation results
+Cross_Validation_Results<-readRDS("Cross_Validation_Results.Rds")
 
-cor(Cross_Validation_Results[[4]]$holdoutpred, Cross_Validation_Results[[4]]$Temperature_difference, method="pearson")
-#0.6568905
+str(folds)
 
-cor(Cross_Validation_Results[[5]]$holdoutpred, Cross_Validation_Results[[5]]$Temperature_difference, method="pearson")
-#0.6586982
+#Create a new column for kfold number
+for(i in 1:N_model){
+    Cross_Validation_Results[[i]]$kfold<-0
+}
+
+#Add kfold number to the kfold column
+for(i in 1:N_model){
+  for(j in 1:k){
+   Cross_Validation_Results[[i]][folds$subsets[folds$which == j], "kfold"]<-j
+  }
+}
+
+#Change column to factor
+for(i in 1:N_model){
+  Cross_Validation_Results[[i]]$kfold<-as.factor(Cross_Validation_Results[[i]]$kfold)
+  Cross_Validation_Results[[i]]$resid_CV<-(Cross_Validation_Results[[i]]$Temperature_difference-Cross_Validation_Results[[i]]$holdoutpred)^2
+}
+
+###Create list for RMSE
+RMSE_results=list()
+for(i in 1:N_model){
+  RMSE_results[[i]]<- Cross_Validation_Results[[i]] %>% group_by(kfold) %>% summarise(RMSE=sqrt(sum(resid_CV)/n()))
+}
+
+
+#Create calculation for predicting sign of bottom-surface temperature difference
+for(i in 1:N_model){
+  Cross_Validation_Results[[i]]$holdoutpred_CorrectSign<-ifelse(Cross_Validation_Results[[i]]$Temperature_difference==0,NA,(ifelse(Cross_Validation_Results[[i]]$Temperature_difference>0&Cross_Validation_Results[[i]]$holdoutpred>0|Cross_Validation_Results[[i]]$Temperature_difference<0&Cross_Validation_Results[[i]]$holdoutpred<0,1,0)))
+}
+
+#Calculate overall RMSE and Pearson correlation for each model
+#https://stats.stackexchange.com/questions/85507/what-is-the-rmse-of-k-fold-cross-validation
+
+Cross_Validation_Summary<-data.frame(ModelNumber=1:N_model,RMSE=0,Pearson=0)
+
+for(i in 1:N_model){
+  Cross_Validation_Summary$RMSE[i]<- sqrt(sum((RMSE_results[[i]]$RMSE)^2)/k)
+  Cross_Validation_Summary$Pearson[i]<-cor(Cross_Validation_Results[[i]]$holdoutpred, Cross_Validation_Results[[i]]$Temperature_difference, method="pearson")
+  Cross_Validation_Summary$CorrectSign[i]<-mean(Cross_Validation_Results[[i]]$holdoutpred_CorrectSign,na.rm=T)
+}
+
+Cross_Validation_Summary
+
+write.csv(Cross_Validation_Summary,"Cross_Validation_Results.csv",row.names = F)
+
+
 
 Cross_Validation_Results[[5]]$holdoutpred_CorrectSign<-ifelse(Cross_Validation_Results[[5]]$Temperature_difference==0,NA,(ifelse(Cross_Validation_Results[[5]]$Temperature_difference>0&Cross_Validation_Results[[5]]$holdoutpred>0|Cross_Validation_Results[[5]]$Temperature_difference<0&Cross_Validation_Results[[5]]$holdoutpred<0,1,0)))
 summary(Cross_Validation_Results[[5]]$holdoutpred_CorrectSign)
+
+
 
 
 #####################################################Extra code
