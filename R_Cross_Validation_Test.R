@@ -149,7 +149,7 @@ for(i in 2){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
+    new_model <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
                      data = temp_dataset, method="fREML", discrete=T, nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
@@ -169,7 +169,7 @@ for(i in 3){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
                     data = temp_dataset, method="fREML", discrete=T, nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
@@ -205,8 +205,8 @@ for(i in 5){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
-                       te(x, y, Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
+    new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
+                       te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
                      data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
