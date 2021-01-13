@@ -85,7 +85,7 @@ data_by_month<-temp_dataset %>% group_by(Month) %>% summarise(SampleSize=sum(Sam
 
 
 ##Construct model with longitude and latitude on top of julian day
-temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(15,5)),data=temp_dataset)
+temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(10,5)),data=temp_dataset)
 summary(temperature_anomaly_GAM_spatial)
 #R-sq.(adj) =  0.907   Deviance explained = 90.7%
 
@@ -110,60 +110,50 @@ temp_dataset$WaterYear<-as.factor(temp_dataset$WaterYear)
 
 #Run models with Julian day and "temperature anomaly"
 
-#This model has been causing crashes for whatever reason
-#model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(40)),
-#                       data = temp_dataset, method="fREML", discrete=T, nthreads=3)
-#gam.check(model_01_thinspline_xy)
-#summary(model_01_thinspline_xy)
-#R-sq.(adj) =   0.15   Deviance explained = 22.7%
-
-model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
+model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
                               data = temp_dataset, method="fREML", discrete=T, nthreads=3)
-#gam.check(model_02_thinspline_xy_jd)
-#summary(model_02_thinspline_xy_jd)
+#gam.check(model_01_thinspline_xy_jd)
+#summary(model_01_thinspline_xy_jd)
 #R-sq.(adj) =   0.22   Deviance explained = 22.7%
+AICc(model_01_thinspline_xy_jd)
+#10801.53
 
-model_03_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
+model_02_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
                                  data = temp_dataset, method="fREML", discrete=T, nthreads=3)
-#gam.check(model_03_thinspline_xy_ta)
-#summary(model_03_thinspline_xy_ta)
-#R-sq.(adj) =  0.315   Deviance explained = 32.4%
+#gam.check(model_02_thinspline_xy_ta)
+summary(model_02_thinspline_xy_ta)
+#R-sq.(adj) =  0.3   Deviance explained = 30.9%
+AICc(model_02_thinspline_xy_ta)
+#9807.957
 
-model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
                               data = temp_dataset, method="fREML", discrete=T, nthreads=3)
-#gam.check(model_04_thinspline_xy_jd_ta)
-#summary(model_04_thinspline_xy_jd_ta)
-#R-sq.(adj) =   0.41   Deviance explained =   43%
-
-model_05_thinspline_xy_jd_tas <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
-                                    data = temp_dataset, method="fREML", discrete=T, nthreads=3)
-summary(model_05_thinspline_xy_jd_tas)
-#gam.check(model_05_thinspline_xy_jd_tas)
+#gam.check(model_03_thinspline_xy_jd_ta)
+#summary(model_03_thinspline_xy_jd_ta)
 #R-sq.(adj) =   0.41   Deviance explained =   43.1%
-AICc(model_05_thinspline_xy_jd_tas)
+AICc(model_03_thinspline_xy_jd_ta)
 #8382.725
 
 ##Add year interaction model
-model_06_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5), by=WaterYear)+WaterYear,
+model_04_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5), by=WaterYear)+WaterYear,
                                  data = temp_dataset, method="fREML", discrete=T, nthreads=3)
-summary(model_06_thinspline_xy_jd_yr)
+summary(model_04_thinspline_xy_jd_yr)
 #R-sq.(adj) =  0.268   Deviance explained = 29.7%
-AICc(model_06_thinspline_xy_jd_yr)
+AICc(model_04_thinspline_xy_jd_yr)
 #10548.09
-plot(model_06_thinspline_xy_jd_yr)
 
 ######################################################################################################
 ################# Model run with soap film smooth ############
 ######################################################################################################
 
 
-model_06_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
-                           te(x, y, Julian_day_s,Temperature_anomaly, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
+model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
+                           te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
                          data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
-summary(model_06_soapfilm_xy_jd_ta)
-gam.check(model_06_soapfilm_xy_jd_ta)
+summary(model_05_soapfilm_xy_jd_ta)
+gam.check(model_05_soapfilm_xy_jd_ta)
 #R-sq.(adj) =  0.413   Deviance explained = 43.3%
-AICc(model_06_soapfilm_xy_jd_ta)
+AICc(model_05_soapfilm_xy_jd_ta)
 #8345.612
 
 

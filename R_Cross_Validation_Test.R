@@ -139,8 +139,6 @@ for(i in 1){
   }
 }
 
-cor(Cross_Validation_Results[[1]]$holdoutpred, Cross_Validation_Results[[1]]$Temperature_difference, method="pearson")
-#0.4767925
 
 ########## MODEL 02
 
@@ -157,9 +155,6 @@ for(i in 2){
     message(paste0("Finished run ", j, "/",k))
   }
 }
-
-cor(Cross_Validation_Results[[2]]$holdoutpred, Cross_Validation_Results[[2]]$Temperature_difference, method="pearson")
-#0.5697763
 
 
 ########## MODEL 03
@@ -178,9 +173,6 @@ for(i in 3){
   }
 }
 
-cor(Cross_Validation_Results[[3]]$holdoutpred, Cross_Validation_Results[[3]]$Temperature_difference, method="pearson")
-#0.6568905
-
 ########## MODEL 04
 
 for(i in 4){
@@ -196,7 +188,6 @@ for(i in 4){
     message(paste0("Finished run ", j, "/",k))
   }
 }
-cor(Cross_Validation_Results[[4]]$holdoutpred, Cross_Validation_Results[[4]]$Temperature_difference, method="pearson")
 
 ########## MODEL 05 - Soap-film smoother
 
@@ -267,12 +258,6 @@ for(i in 1:N_model){
 Cross_Validation_Summary
 
 write.csv(Cross_Validation_Summary,"Cross_Validation_Results.csv",row.names = F)
-
-
-
-Cross_Validation_Results[[5]]$holdoutpred_CorrectSign<-ifelse(Cross_Validation_Results[[5]]$Temperature_difference==0,NA,(ifelse(Cross_Validation_Results[[5]]$Temperature_difference>0&Cross_Validation_Results[[5]]$holdoutpred>0|Cross_Validation_Results[[5]]$Temperature_difference<0&Cross_Validation_Results[[5]]$holdoutpred<0,1,0)))
-summary(Cross_Validation_Results[[5]]$holdoutpred_CorrectSign)
-
 
 
 
