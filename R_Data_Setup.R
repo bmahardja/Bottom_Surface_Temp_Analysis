@@ -5,18 +5,24 @@
 #devtools::install_github("sbashevkin/spacetools")
 #install.packages("remotes")
 #remotes::install_github("sbashevkin/deltareportr")
+#devtools::install_github("sbashevkin/discretewq")
 
-
+require(gstat)
+require(sp)
+require(spacetime)
 library(tidyverse)
-library(deltareportr)
+library(discretewq)
+library(mgcv)
 library(lubridate)
 library(hms)
-library(rgdal)
 library(sf)
+library(stars)
+require(patchwork)
+require(geofacet)
+require(dtplyr)
+require(scales)
+require(rgdal)
 library(broom)
-library(mgcv)
-library(units)
-library(rgeos)
 
 #Set up a path for datasets and shapefiles
 data_root<-file.path("data-raw")
@@ -26,7 +32,7 @@ data_root<-file.path("data-raw")
 ###################################################
 
 #Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline3_UTM10.shp"))
+Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_UTM10.shp"))
 
 Delta.xy.aut <- tidy(Delta.aut)
 head(Delta.xy.aut)
@@ -49,44 +55,52 @@ border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
 
 #Same steps from Sam's Temperature QAQC R script
 
+is.even <- function(x) as.integer(x) %% 2 == 0
+
 # Load Delta Shapefile from Brian
-Delta<-st_read(file.path(data_root,"Delta Subregions"))%>%
+Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp"))%>%
   filter(!SubRegion%in%c("South Bay", "San Francisco Bay", "San Pablo Bay", "Upper Yolo Bypass", 
                          "Upper Napa River", "Lower Napa River", "Carquinez Strait"))%>% # Remove regions outside our domain of interest
   dplyr::select(SubRegion)
 
 # Load data
-Data <- DeltaDater(Start_year = 1900, 
-                   WQ_sources = c("EMP", "STN", "FMWT", "EDSM", "DJFMP", "SKT", "20mm", "Suisun", "Baystudy", "USBR", "USGS"), 
-                   Variables = "Water quality", 
-                   Regions = NULL)%>%
+Data <- wq()%>%
   filter(!is.na(Temperature) & !is.na(Datetime) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Date))%>% #Remove any rows with NAs in our key variables
   filter(Temperature !=0)%>% #Remove 0 temps
   mutate(Temperature_bottom=if_else(Temperature_bottom>30, NA_real_, Temperature_bottom))%>% #Remove bad bottom temps
-  filter(hour(Datetime)>=5 & hour(Datetime)<=20)%>% # Only keep data betwen 5AM and 8PM
+  filter(hour(Datetime)>=5 & hour(Datetime)<=20)%>% # Only keep data between 5AM and 8PM
+  mutate(Datetime = with_tz(Datetime, tz="America/Phoenix"), #Convert to a timezone without daylight savings time
+         Date = with_tz(Date, tz="America/Phoenix"),
+         Time=as_hms(Datetime), # Create variable for time-of-day, not date. 
+         Noon_diff=abs(hms(hours=12)-Time))%>% # Calculate difference from noon for each data point for later filtering
+  group_by(Station, Source, Date)%>%
+  filter(Noon_diff==min(Noon_diff))%>% # Select only 1 data point per station and date, choose data closest to noon
+  filter(Time==min(Time))%>% # When points are equidistant from noon, select earlier point
+  ungroup()%>%
+  distinct(Date, Station, Source, .keep_all = TRUE)%>% # Finally, remove the ~10 straggling datapoints from the same time and station
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326, remove=FALSE)%>% # Convert to sf object
   st_transform(crs=st_crs(Delta))%>% # Change to crs of Delta
   st_join(Delta, join=st_intersects)%>% # Add subregions
   filter(!is.na(SubRegion))%>% # Remove any data outside our subregions of interest
-  mutate(Datetime = with_tz(Datetime, tz="America/Phoenix"), #Convert to a timezone without daylight savings time
-         Date = with_tz(Date, tz="America/Phoenix"),
-         Julian_day = yday(Date), # Create julian day variable
+  mutate(Julian_day = yday(Date), # Create julian day variable
          Month_fac=factor(Month), # Create month factor variable
          Source_fac=factor(Source),
-         Year_fac=factor(Year))%>% #BM: Changed from Sam's original code to make it non-ordered
-  mutate(Date_num = as.numeric(Date), # Create numeric version of date for models
-         Time = as_hms(Datetime))%>% # Create variable for time-of-day, not date. 
-  mutate(Time_num=as.numeric(Time))%>% # Create numeric version of time for models (=seconds since midnight)
-  mutate_at(vars(Date_num, Longitude, Latitude, Time_num, Year, Julian_day), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T))) # Create centered and standardized versions of covariates
+         Year_fac=factor(Year))%>% 
+  mutate(Date_num = as.numeric(Date))%>%  # Create numeric version of date for models
+  mutate(Time_num=as.numeric(Time)) # Create numeric version of time for models (=seconds since midnight)
+
 
 # Pull station locations for major monitoring programs
 # This will be used to set a boundary for this analysis focused on well-sampled regions.
 WQ_stations<-Data%>%
+  st_drop_geometry()%>%
   filter(Source%in%c("FMWT", "STN", "SKT", "20mm", "EMP", "Suisun"))%>%
-  group_by(StationID, Source)%>%
-  summarise(N=n())%>% # Calculate how many times each station was sampled
+  group_by(StationID, Source, Latitude, Longitude)%>%
+  summarise(N=n(), .groups="drop")%>% # Calculate how many times each station was sampled
   filter(N>50 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >50 times when deciding which regions to retain. 
   # "20mm 918", "STN 918" are far south of the rest of the well-sampled sites and are not sampled year round, so we're removing them to exclude that far southern region
+  st_as_sf(coords=c("Longitude", "Latitude"), crs=4326, remove=FALSE)%>% # Convert to sf object
+  st_transform(crs=st_crs(Delta))%>%
   st_join(Delta) # Add subregions
 
 # Remove any subregions that do not contain at least one of these >50 samples stations from the major monitoring programs
@@ -104,7 +118,9 @@ Data<-Data%>%
             mutate(IN=TRUE),
           join=st_intersects)%>%
   filter(IN)%>%
-  dplyr::select(-IN)
+  dplyr::select(-IN)%>%
+  mutate(Group=if_else(is.even(Year), 1, 2))%>%
+  mutate_at(vars(Date_num, Longitude, Latitude, Time_num, Year, Julian_day), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T))) # Create centered and standardized versions of covariates
 
 #Filter just those that have bottom temperature measurements
 Data_subset<- Data %>% filter(!is.na(Temperature_bottom))
@@ -116,7 +132,7 @@ Data_subset$Year<-year(Data_subset$Date)
 
 #Convert data to UTM since lat and long don't seem to work well with soap-film
 cord.dec <- SpatialPoints(cbind(Data_subset$Longitude, -Data_subset$Latitude), proj4string = CRS("+proj=longlat +datum=WGS84"))
-cord.UTM <- spTransform(cord.dec, CRS("+proj=utm +zone=10 +datum=WGS84"))
+cord.UTM <- spTransform(cord.dec, CRS("+proj=utm +zone=10 +datum=NAD83"))
 cord.UTM.data.frame <-as.data.frame(cord.UTM)
 cord.UTM.data.frame$coords.x2<-abs(cord.UTM.data.frame$coords.x2)
 
@@ -152,7 +168,7 @@ Data_subset_post_2011_outside <- Data_subset_post_2011[!with(Data_subset_post_20
 plot(Delta.aut, col="grey")
 points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg="purple")
 points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="red")
-#Only 51 points are outside the boundaries
+#Only 1 point is outside the boundary, EMP site that's somehow located on land
 
 ###################################################
 ################# Set up a couple of knots ############
@@ -224,8 +240,11 @@ plot(Delta.aut, col="grey")
 points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg="blue")
 points(knots_interior_reduced, pch=21, bg="red")
 points(knots_grid, pch=21, bg="white")
+points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="yellow")
 
+#Export out data
 Data_subset_post_2011_inside$geometry<-NULL
 write.csv(Data_subset_post_2011_inside, file = "temperature_dataset.csv",row.names = F)
 write.csv(knots_interior_reduced, file = "knots_custom.csv",row.names = F)
 write.csv(knots_grid, file = "knots_grid.csv",row.names = F)
+
