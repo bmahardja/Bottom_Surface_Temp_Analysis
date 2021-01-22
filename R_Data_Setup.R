@@ -28,11 +28,11 @@ library(broom)
 data_root<-file.path("data-raw")
 
 ###################################################
-################# Setting Boundary ############
+################# Setting Boundary ################
 ###################################################
 
 #Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_UTM10.shp"))
+Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
 Delta.xy.aut <- tidy(Delta.aut)
 head(Delta.xy.aut)
@@ -65,7 +65,7 @@ Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.
 
 # Load data
 Data <- wq()%>%
-  filter(!is.na(Temperature) & !is.na(Datetime) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Date))%>% #Remove any rows with NAs in our key variables
+  filter(!is.na(Temperature) & !is.na(Datetime) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Date) & !is.na(Temperature_bottom))%>% #Remove any rows with NAs in our key variables
   filter(Temperature !=0)%>% #Remove 0 temps
   mutate(Temperature_bottom=if_else(Temperature_bottom>30, NA_real_, Temperature_bottom))%>% #Remove bad bottom temps
   filter(hour(Datetime)>=5 & hour(Datetime)<=20)%>% # Only keep data between 5AM and 8PM
@@ -122,22 +122,17 @@ Data<-Data%>%
   mutate(Group=if_else(is.even(Year), 1, 2))%>%
   mutate_at(vars(Date_num, Longitude, Latitude, Time_num, Year, Julian_day), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T))) # Create centered and standardized versions of covariates
 
-#Filter just those that have bottom temperature measurements
-Data_subset<- Data %>% filter(!is.na(Temperature_bottom))
+######## Begin editing Sam's data here ###########################
+#Create new dataframe to keep the original data
+Data_subset<- Data
 
-#Year variable is actually water year
-#Change
-Data_subset<-Data_subset %>% rename(WaterYear=Year)
-Data_subset$Year<-year(Data_subset$Date)
+#Add Water Year variable
+Data_subset$WaterYear<-ifelse(month(Data_subset$Date)>=10,year(Data_subset$Date)+1,year(Data_subset$Date))
 
-#Convert data to UTM since lat and long don't seem to work well with soap-film
-cord.dec <- SpatialPoints(cbind(Data_subset$Longitude, -Data_subset$Latitude), proj4string = CRS("+proj=longlat +datum=WGS84"))
-cord.UTM <- spTransform(cord.dec, CRS("+proj=utm +zone=10 +datum=NAD83"))
-cord.UTM.data.frame <-as.data.frame(cord.UTM)
-cord.UTM.data.frame$coords.x2<-abs(cord.UTM.data.frame$coords.x2)
-
-Data_subset$x<-cord.UTM.data.frame$coords.x1
-Data_subset$y<-cord.UTM.data.frame$coords.x2
+#Add UTM coordinates
+UTM_coordinates<-sf::st_coordinates(Data_subset)
+Data_subset$x<-UTM_coordinates[,c("X")]
+Data_subset$y<-UTM_coordinates[,c("Y")]
 
 #Also subset data to 2011 and on---
 #As they have the best spatiotemporal coverage
@@ -153,7 +148,8 @@ Data_subset_post_2011 <- Data_subset %>% filter(year(Date)>=2011)
 
 #Remove temperatures that seem unreasonable for bottom and surface (those below 5 C and above 30 C)
 summary(Data_subset_post_2011$Temperature_bottom)
-
+summary(Data_subset_post_2011$Temperature)
+#There were data points with bottom temp at 0, and another with surface temp at 33 C while bottom temp were listed as 23 (clearly a mistake)
 Data_subset_post_2011<- Data_subset_post_2011 %>% filter(Temperature_bottom>=5&Temperature_bottom<=30)
 Data_subset_post_2011<- Data_subset_post_2011 %>% filter(Temperature>=5&Temperature<=30)
 hist(Data_subset_post_2011$Temperature_bottom)
@@ -171,51 +167,9 @@ points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, 
 #Only 1 point is outside the boundary, EMP site that's somehow located on land
 
 ###################################################
-################# Set up a couple of knots ############
+################# Set up knots ############
 ###################################################
 
-river_km_points <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "River_km_UTM10.shp"))
-
-knots_interior<-data.frame(river_km_points)
-knots_interior<-knots_interior %>% dplyr::select(coords.x1,coords.x2) %>%rename(x=coords.x1,y=coords.x2)
-
-#Reduce knot number by 1/4
-Nth.delete<-function(dataframe, n)dataframe[-(seq(n,to=nrow(dataframe),by=n)),]
-knots_interior_reduced<-Nth.delete(knots_interior,2)
-knots_interior_reduced<-Nth.delete(knots_interior_reduced,2)
-knots_interior_reduced<-Nth.delete(knots_interior_reduced,2)
-
-#Check outline and compare to interior knots
-plot(Delta.aut, col="grey")
-#points(knots_interior, pch=21, bg="yellow")
-points(knots_interior_reduced, pch=21, bg="red")
-
-# Editing out knots too close to the border with sf ----------------------------------------------------------
-Delta.aut_sf<-st_as_sf(Delta.aut)
-knots_sf<-st_as_sf(knots_interior_reduced, coords=c("x","y"), crs=st_crs(Delta.aut_sf), remove=F)
-
-ggplot()+
-  geom_sf(data=Delta.aut_sf)+
-  geom_sf(data=knots_sf, color="red")+
-  theme_bw()
-
-distances<-Delta.aut_sf %>%
-  st_cast(to = 'LINESTRING') %>% #TUrn polygon into linestring
-  st_distance(y = knots_sf) # Get distance of each point from that perimeter linestring
-
-#remove knots within 10 m of boundary
-knots_sf_edited<-knots_sf[-which(distances<units::set_units(10, "m")),]
-
-ggplot()+
-  geom_sf(data=Delta.aut_sf)+
-  geom_sf(data=knots_sf, color="red")+
-  geom_sf(data=knots_sf_edited, color="blue")+
-  theme_bw()
-
-knots_interior_reduced<-knots_sf_edited%>%
-  st_drop_geometry()
-
-#####---------------
 ## Set up a different knots set up using 20x20 points
 N <- 20
 gx <- seq(min(Delta.xy.aut[,1]), max(Delta.xy.aut[,1]), len = N)
@@ -230,6 +184,58 @@ plot(Delta.aut, col="grey")
 points(knots_grid, pch=21, bg="orange")
 text(knots_grid, labels=rownames(knots_grid))
 
+# Editing out knots too close to the border with sf ----------------------------------------------------------
+Delta.aut_sf<-st_as_sf(Delta.aut)
+
+knots_grid_sf<-st_as_sf(knots_grid, coords=c("x","y"), crs=st_crs(Delta.aut_sf), remove=F)
+
+ggplot()+
+  geom_sf(data=Delta.aut_sf)+
+  geom_sf(data=knots_grid_sf, color="red")+
+  theme_bw()
+
+distances<-Delta.aut_sf %>%
+  st_cast(to = 'LINESTRING') %>% #TUrn polygon into linestring
+  st_distance(y = knots_grid_sf) # Get distance of each point from that perimeter linestring
+
+#remove knots within 500 m of boundary
+knots_grid_sf_edited<-knots_grid_sf[-which(distances<units::set_units(500, "m")),]
+
+ggplot()+
+  geom_sf(data=Delta.aut_sf)+
+  geom_sf(data=knots_grid_sf, color="red")+
+  geom_sf(data=knots_grid_sf_edited, color="blue")+
+  theme_bw()
+
+knots_grid_reduced<-knots_grid_sf_edited%>%
+  st_drop_geometry()
+
+########################################################
+# cut out data points close to boundaries as and save as a different dataset
+
+ggplot()+
+  geom_sf(data=Delta.aut_sf)+
+  geom_sf(data=Data_subset_post_2011_inside, color="red")+
+  theme_bw()
+
+distances<-Delta.aut_sf %>%
+  st_cast(to = 'LINESTRING') %>% #TUrn polygon into linestring
+  st_distance(y = Data_subset_post_2011_inside) # Get distance of each point from that perimeter linestring
+
+
+#remove knots within 400 m of boundary
+Data_subset_post_2011_inside_edited<-Data_subset_post_2011_inside[-which(distances<units::set_units(400, "m")),]
+
+ggplot()+
+  geom_sf(data=Delta.aut_sf)+
+  geom_sf(data=Data_subset_post_2011_inside, color="red")+
+  geom_sf(data=Data_subset_post_2011_inside_edited, color="blue")+
+  theme_bw()
+
+
+Data_subset_post_2011_inside_edited<-Data_subset_post_2011_inside_edited%>%
+  st_drop_geometry()
+
 ###################################################
 ################# Export data and knots ############
 ###################################################
@@ -238,13 +244,61 @@ text(knots_grid, labels=rownames(knots_grid))
 #Plot to show points and boundaries
 plot(Delta.aut, col="grey")
 points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg="blue")
-points(knots_interior_reduced, pch=21, bg="red")
-points(knots_grid, pch=21, bg="white")
+points(knots_grid_reduced, pch=21, bg="white")
 points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="yellow")
 
 #Export out data
 Data_subset_post_2011_inside$geometry<-NULL
 write.csv(Data_subset_post_2011_inside, file = "temperature_dataset.csv",row.names = F)
-write.csv(knots_interior_reduced, file = "knots_custom.csv",row.names = F)
-write.csv(knots_grid, file = "knots_grid.csv",row.names = F)
+write.csv(knots_grid_reduced, file = "knots_grid.csv",row.names = F)
+write.csv(Data_subset_post_2011_inside_edited, file = "temperature_dataset_edited.csv",row.names = F)
 
+
+
+
+
+
+
+
+
+#####Extra Codes below
+
+
+
+##########################################
+#CODE TO COMPARE DATASET
+##########################################
+temp_dataset<-read.csv("temperature_dataset_old.csv")
+
+library(compareDF)
+library(htmlTable)
+
+new<-as.data.frame(unique(Data_subset_post_2011_inside[,c("Source","Station","Date","Latitude","Longitude")]))
+new$Date<-as.Date(new$Date)
+
+old<-as.data.frame(unique(temp_dataset[,c("Source","Station","Date","Latitude","Longitude")]))
+old$Date<-as.Date(old$Date)
+
+
+plot(old$y~old$x, pch=21, bg="blue")
+points(new$y~new$x, pch=21, bg="red")
+
+ctable = compare_df(new, old,c("Latitude","Longitude"))
+
+print(ctable$comparison_table_diff)
+print(ctable$html_output)
+ctable$change_count
+ctable$change_summary
+ctable$comparison_df
+
+
+write.csv(ctable$comparison_df, file = "temperature_dataset_mismatch.csv",row.names = F)
+
+
+
+
+tabletest<-anti_join(old, new)
+
+
+plot(old$Latitude~old$Longitude, pch=21, bg="blue")
+points(tabletest$Latitude~tabletest$Longitude, pch=21, bg="yellow")
