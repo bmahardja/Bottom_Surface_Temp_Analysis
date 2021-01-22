@@ -111,8 +111,8 @@ hist(temp_dataset$Temperature_anomaly_spatial)
 #Number of models to be tested
 N_model<-5
 
-#with K=5
-k <- 5 #the number of folds
+#with K=10
+k <- 10 #the number of folds
 set.seed(2020)
 folds <- cvFolds(NROW(temp_dataset), K=k)
 

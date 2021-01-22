@@ -9,7 +9,7 @@ library(AICcmodavg)
 data_root<-file.path("data-raw")
 
 #Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline3_UTM10.shp"))
+Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
 ###################################################
 ################# Set up Boundary and Knots ############
@@ -31,8 +31,7 @@ nr <- seq(1,length(borderlist))
 
 border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
 
-#Use custom knots
-knots_custom <- read.csv("knots_custom.csv")
+#Load knots
 knots_grid <- read.csv("knots_grid.csv")
 
 
@@ -40,7 +39,11 @@ knots_grid <- read.csv("knots_grid.csv")
 ################# Read dataset and create temperature anomaly calculation ############
 ######################################################################################################
 
-temp_dataset<-read.csv("temperature_dataset.csv")
+#temp_dataset<-read.csv("temperature_dataset.csv")
+######################
+#Try to use the reduced  dataset for now
+temp_dataset<-read.csv("temperature_dataset_edited.csv")
+
 str(temp_dataset)
 
 # Calculate difference of bottom temperature from surface temperature as response variable
@@ -62,9 +65,9 @@ hist(temp_dataset$Temperature_anomaly)
 ############Summary of data
 summary(temp_dataset$Temperature_difference)
 #Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#-5.7600 -0.3000 -0.1000 -0.1775  0.0000  6.5600 
+#-5.7600 -0.3000 -0.1000 -0.1669  0.0000  6.5600 
 sd(temp_dataset$Temperature_difference)
-#0.4779963
+#0.4546607
 
 #Summarize by region for reference
 temp_dataset$SubRegion=as.factor(temp_dataset$SubRegion)
@@ -117,6 +120,8 @@ model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, 
 #R-sq.(adj) =   0.22   Deviance explained = 22.7%
 AICc(model_01_thinspline_xy_jd)
 #10801.53
+#Try k=13 for julian day (1 for each month)
+#Try k=30  vs 50 and plot results for spatial component
 
 model_02_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
                                  data = temp_dataset, method="fREML", discrete=T, nthreads=3)
@@ -146,23 +151,20 @@ AICc(model_04_thinspline_xy_jd_yr)
 ################# Model run with soap film smooth ############
 ######################################################################################################
 
-
 model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
                            te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
                          data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+
+
+model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=2500),NULL,NULL))+
+                                    te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=2500),NULL,NULL)),
+                                  data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+
 summary(model_05_soapfilm_xy_jd_ta)
 gam.check(model_05_soapfilm_xy_jd_ta)
 #R-sq.(adj) =  0.413   Deviance explained = 43.3%
 AICc(model_05_soapfilm_xy_jd_ta)
 #8345.612
-
-
-
-######################################################################################################
-################# Model run with just thin spline and cyclic cubic spline ############
-######################################################################################################
-
-model_list<- as.character(c(model_01_thinspline_xy,model_05_thinspline_xy_jd_tas))
 
 
 
@@ -191,26 +193,10 @@ model_list<- as.character(c(model_01_thinspline_xy,model_05_thinspline_xy_jd_tas
 ############### Fit test model  ######################
 #m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=1000)),
 #              data = temp_dataset, method = "fREML", discrete=T, nthreads=3, knots = knots_grid)
-#^ this one worked
+
 #Test with 5000 nmax and the knots_custom didn't work and gave an error
 knots_edit<-knots_grid[-7,]
 
 
-m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=1000)),
-              data = temp_dataset, method = "fREML", discrete=T, nthreads=3, knots = knots_edit)
-
-knots_edit<-knots_edit[-6,]
-knots_edit<-knots_edit[-9,]
-knots_edit<-knots_edit[-10,]
-knots_edit<-knots_edit[-14,]
-knots_edit<-knots_edit[-14,]
-knots_edit<-knots_edit[-17,]
-
-
-
-plot(Delta.aut, col="grey")
-points(knots, pch=21, bg="red")
-points(knots_edit, pch=21, bg="yellow")
-
-
-#text(knots, labels=rownames(knots))
+m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=1500)),
+              data = temp_dataset, method = "fREML", discrete=T, nthreads=3, knots = knots_grid)
