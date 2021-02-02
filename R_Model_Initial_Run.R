@@ -5,6 +5,7 @@ library(rgdal)
 library(mgcv)
 library(AICcmodavg)
 
+source("soap_checker/soap_check.R")
 # No need to specify absolute file paths in an Rstudio project (if you open it as a project).
 data_root<-file.path("data-raw")
 
@@ -39,10 +40,10 @@ knots_grid <- read.csv("knots_grid.csv")
 ################# Read dataset and create temperature anomaly calculation ############
 ######################################################################################################
 
-#temp_dataset<-read.csv("temperature_dataset.csv")
+temp_dataset<-read.csv("temperature_dataset.csv")
 ######################
 #Try to use the reduced  dataset for now
-temp_dataset<-read.csv("temperature_dataset_edited.csv")
+#temp_dataset<-read.csv("temperature_dataset_edited.csv")
 
 str(temp_dataset)
 
@@ -114,7 +115,7 @@ temp_dataset$WaterYear<-as.factor(temp_dataset$WaterYear)
 #Run models with Julian day and "temperature anomaly"
 
 model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
-                              data = temp_dataset, method="fREML", discrete=T, nthreads=3)
+                              data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_01_thinspline_xy_jd)
 #summary(model_01_thinspline_xy_jd)
 #R-sq.(adj) =   0.22   Deviance explained = 22.7%
@@ -124,7 +125,7 @@ AICc(model_01_thinspline_xy_jd)
 #Try k=30  vs 50 and plot results for spatial component
 
 model_02_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
-                                 data = temp_dataset, method="fREML", discrete=T, nthreads=3)
+                                 data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_02_thinspline_xy_ta)
 summary(model_02_thinspline_xy_ta)
 #R-sq.(adj) =  0.3   Deviance explained = 30.9%
@@ -132,7 +133,7 @@ AICc(model_02_thinspline_xy_ta)
 #9807.957
 
 model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
-                              data = temp_dataset, method="fREML", discrete=T, nthreads=3)
+                              data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_03_thinspline_xy_jd_ta)
 #summary(model_03_thinspline_xy_jd_ta)
 #R-sq.(adj) =   0.41   Deviance explained =   43.1%
@@ -141,9 +142,9 @@ AICc(model_03_thinspline_xy_jd_ta)
 
 ##Add year interaction model
 model_04_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5), by=WaterYear)+WaterYear,
-                                 data = temp_dataset, method="fREML", discrete=T, nthreads=3)
+                                 data = temp_dataset, method="fREML", nthreads=3)
 summary(model_04_thinspline_xy_jd_yr)
-#R-sq.(adj) =  0.268   Deviance explained = 29.7%
+#R-sq.(adj) =  0.242   Deviance explained = 27.4%
 AICc(model_04_thinspline_xy_jd_yr)
 #10548.09
 
@@ -152,19 +153,18 @@ AICc(model_04_thinspline_xy_jd_yr)
 ######################################################################################################
 
 model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
-                           te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
-                         data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+                           te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
+                         data = temp_dataset, method="fREML", nthreads=3, knots =knots_grid)
 
 
-model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=2500),NULL,NULL))+
-                                    te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=2500),NULL,NULL)),
-                                  data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+soap_check(bnd = border.aut, knots = knots_grid)
+soap_check(bnd = border.aut, knots = temp_dataset[,c("x","y")])
 
 summary(model_05_soapfilm_xy_jd_ta)
 gam.check(model_05_soapfilm_xy_jd_ta)
-#R-sq.(adj) =  0.413   Deviance explained = 43.3%
+#R-sq.(adj) =  0.366   Deviance explained = 38.9%
 AICc(model_05_soapfilm_xy_jd_ta)
-#8345.612
+#7166.115
 
 
 
