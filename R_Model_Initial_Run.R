@@ -114,34 +114,34 @@ temp_dataset$WaterYear<-as.factor(temp_dataset$WaterYear)
 
 #Run models with Julian day and "temperature anomaly"
 
-model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
+model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5)),
                               data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_01_thinspline_xy_jd)
 #summary(model_01_thinspline_xy_jd)
-#R-sq.(adj) =   0.22   Deviance explained = 22.7%
+#R-sq.(adj) =  0.185   Deviance explained = 19.2%
 AICc(model_01_thinspline_xy_jd)
-#10801.53
+#8940.718
 #Try k=13 for julian day (1 for each month)
 #Try k=30  vs 50 and plot results for spatial component
 
-model_02_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
+model_02_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(25,7)),
                                  data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_02_thinspline_xy_ta)
 summary(model_02_thinspline_xy_ta)
-#R-sq.(adj) =  0.3   Deviance explained = 30.9%
+#R-sq.(adj) =  0.276   Deviance explained = 28.7%
 AICc(model_02_thinspline_xy_ta)
-#9807.957
+#8053.53
 
-model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(25,5,7)),
                               data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_03_thinspline_xy_jd_ta)
 #summary(model_03_thinspline_xy_jd_ta)
-#R-sq.(adj) =   0.41   Deviance explained =   43.1%
+#R-sq.(adj) =  0.366   Deviance explained = 38.9%
 AICc(model_03_thinspline_xy_jd_ta)
-#8382.725
+#7173.249
 
 ##Add year interaction model
-model_04_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5), by=WaterYear)+WaterYear,
+model_04_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5), by=WaterYear)+WaterYear,
                                  data = temp_dataset, method="fREML", nthreads=3)
 summary(model_04_thinspline_xy_jd_yr)
 #R-sq.(adj) =  0.242   Deviance explained = 27.4%
@@ -152,37 +152,53 @@ AICc(model_04_thinspline_xy_jd_yr)
 ################# Model run with soap film smooth ############
 ######################################################################################################
 
-model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
-                           te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
+model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(25,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL))+
+                           te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(25,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL)),
                          data = temp_dataset, method="fREML", nthreads=3, knots =knots_grid)
-
-
-soap_check(bnd = border.aut, knots = knots_grid)
-soap_check(bnd = border.aut, knots = temp_dataset[,c("x","y")])
 
 summary(model_05_soapfilm_xy_jd_ta)
 gam.check(model_05_soapfilm_xy_jd_ta)
-#R-sq.(adj) =  0.366   Deviance explained = 38.9%
+#R-sq.(adj) =  0.366   Deviance explained = 38.7%
 AICc(model_05_soapfilm_xy_jd_ta)
 #7166.115
 
 
+######################################################################################################
+################# List of models to choose k  ############
+######################################################################################################
 
+model_k <-list( )
+#Start from k=10 and increase by 5 until 40
+model_k[[1]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(10,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[2]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(15,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[3]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(20,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[4]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[5]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(30,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[6]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[7]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
+                data = temp_dataset, method="fREML", nthreads=3)
+model_k[[8]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(45,5)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[9]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(50,5)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+summary(model_k[[1]])
 
+#https://stat.ethz.ch/R-manual/R-patched/library/mgcv/html/summary.gam.html
+for (i in 1:9){
+  print(summary(model_k[[i]])$r.sq)
+}
 
+for (i in 1:9){
+  print(AICc(model_k[[i]]))
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
+#k=25 for x and y spatial components seem to be most balanced between fit and complexity based on AICc and adjusted R^2
 
 
 
