@@ -14,6 +14,9 @@ temp_dataset<- temp_dataset %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=
 
 #Load data for continuous water quality stations
 continuous_stations<-read.csv(file.path(data_root,"Continuous depth station locations.csv"))
+continuous_stations<- continuous_stations %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326, remove=FALSE)
+
+
 
 latlong_unique<-unique(temp_dataset[c("Latitude","Longitude")])
 
@@ -24,7 +27,8 @@ crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
 fig1<-ggplot() + theme_bw()+
   geom_sf(data = Water, fill="slategray1", color="slategray2") +
   geom_sf(data = Delta, alpha=0.1) + 
-  geom_sf(data=latlong_unique, aes(fill="black"))+
+  geom_sf(data=latlong_unique, color="black")+
+  geom_sf(data=continuous_stations, color="red")+
   coord_sf(xlim = c(-122.5, -120.9), ylim = c(37.4, 38.61),crs=crsLONGLAT)  +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          pad_y = unit(1.0, "in"),
