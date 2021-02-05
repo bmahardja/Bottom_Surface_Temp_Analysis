@@ -98,13 +98,13 @@ WQ_stations<-Data%>%
   filter(Source%in%c("FMWT", "STN", "SKT", "20mm", "EMP", "Suisun"))%>%
   group_by(StationID, Source, Latitude, Longitude)%>%
   summarise(N=n(), .groups="drop")%>% # Calculate how many times each station was sampled
-  filter(N>25 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >50 times when deciding which regions to retain. 
+  filter(N>30 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >50 times when deciding which regions to retain. 
   # "20mm 918", "STN 918" are far south of the rest of the well-sampled sites and are not sampled year round, so we're removing them to exclude that far southern region
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326, remove=FALSE)%>% # Convert to sf object
   st_transform(crs=st_crs(Delta))%>%
   st_join(Delta) # Add subregions
 
-# Remove any subregions that do not contain at least one of these >50 samples stations from the major monitoring programs
+# Remove any subregions that do not contain at least one of these >30 samples stations from the major monitoring programs
 Delta <- Delta%>%
   filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
 # Visualize sampling regions of major surveys
