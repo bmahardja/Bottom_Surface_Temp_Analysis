@@ -62,12 +62,13 @@ Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.
   filter(!SubRegion%in%c("South Bay", "San Francisco Bay", "San Pablo Bay", "Upper Yolo Bypass", 
                          "Upper Napa River", "Lower Napa River", "Carquinez Strait"))%>% # Remove regions outside our domain of interest
   dplyr::select(SubRegion)
+# Visualize regions
+ggplot(data=Delta,aes(label=SubRegion))+geom_sf()+geom_sf_text()
 
 # Load data
 Data <- wq()%>%
   filter(!is.na(Temperature) & !is.na(Datetime) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Date) & !is.na(Temperature_bottom))%>% #Remove any rows with NAs in our key variables
   filter(Temperature !=0)%>% #Remove 0 temps
-  mutate(Temperature_bottom=if_else(Temperature_bottom>30, NA_real_, Temperature_bottom))%>% #Remove bad bottom temps
   filter(hour(Datetime)>=5 & hour(Datetime)<=20)%>% # Only keep data between 5AM and 8PM
   mutate(Datetime = with_tz(Datetime, tz="America/Phoenix"), #Convert to a timezone without daylight savings time
          Date = with_tz(Date, tz="America/Phoenix"),
@@ -86,8 +87,8 @@ Data <- wq()%>%
          Month_fac=factor(Month), # Create month factor variable
          Source_fac=factor(Source),
          Year_fac=factor(Year))%>% 
-  mutate(Date_num = as.numeric(Date))%>%  # Create numeric version of date for models
-  mutate(Time_num=as.numeric(Time)) # Create numeric version of time for models (=seconds since midnight)
+  mutate(Date_num = as.numeric(Date))%>%  # Create numeric version of date; keep just in case we need it
+  mutate(Time_num=as.numeric(Time)) # Create numeric version of time (=seconds since midnight); keep just in case we need it
 
 
 # Pull station locations for major monitoring programs
@@ -97,7 +98,7 @@ WQ_stations<-Data%>%
   filter(Source%in%c("FMWT", "STN", "SKT", "20mm", "EMP", "Suisun"))%>%
   group_by(StationID, Source, Latitude, Longitude)%>%
   summarise(N=n(), .groups="drop")%>% # Calculate how many times each station was sampled
-  filter(N>50 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >50 times when deciding which regions to retain. 
+  filter(N>25 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >50 times when deciding which regions to retain. 
   # "20mm 918", "STN 918" are far south of the rest of the well-sampled sites and are not sampled year round, so we're removing them to exclude that far southern region
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326, remove=FALSE)%>% # Convert to sf object
   st_transform(crs=st_crs(Delta))%>%
@@ -105,8 +106,9 @@ WQ_stations<-Data%>%
 
 # Remove any subregions that do not contain at least one of these >50 samples stations from the major monitoring programs
 Delta <- Delta%>%
-  filter(SubRegion%in%unique(WQ_stations$SubRegion) | SubRegion=="Georgiana Slough") # Retain Georgiana Slough because it's surrounded by well-sampled regions
+  filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
 # Visualize sampling regions of major surveys
+ggplot(data=Delta,aes(label=SubRegion))+geom_sf()+geom_sf_text()
 
 # Now filter data to only include this final set of subregions, and any stations outside the convex hull formed by the >50 samples stations from the major monitoring programs
 Data<-Data%>%
@@ -122,7 +124,7 @@ Data<-Data%>%
   mutate(Group=if_else(is.even(Year), 1, 2))%>%
   mutate_at(vars(Date_num, Longitude, Latitude, Time_num, Year, Julian_day), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T))) # Create centered and standardized versions of covariates
 
-######## Begin editing Sam's data here ###########################
+######## Sam's code ends here ###########################
 #Create new dataframe to keep the original data
 Data_subset<- Data
 
