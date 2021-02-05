@@ -8,9 +8,10 @@ library(cvTools)
 
 # No need to specify absolute file paths in an Rstudio project (if you open it as a project).
 data_root<-file.path("data-raw")
+results_root<-file.path("results")
 
 #Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline3_UTM10.shp"))
+Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
 ###################################################
 ################# Set up Boundary and Knots ############
@@ -32,8 +33,7 @@ nr <- seq(1,length(borderlist))
 
 border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
 
-#Use custom knots
-knots_custom <- read.csv("knots_custom.csv")
+#Add knots
 knots_grid <- read.csv("knots_grid.csv")
 
 
@@ -130,7 +130,7 @@ for(i in 1){
   train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
   validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
   
-  new_model <- bam(Temperature_difference ~ te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5)),
+  new_model <- bam(Temperature_difference ~ te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5)),
                data = temp_dataset, method="fREML", discrete=T, nthreads=3) 
   newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
   
@@ -147,7 +147,7 @@ for(i in 2){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(40,7)),
+    new_model <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(25,7)),
                      data = temp_dataset, method="fREML", discrete=T, nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
@@ -164,7 +164,7 @@ for(i in 3){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(40,5,7)),
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(25,5,7)),
                     data = temp_dataset, method="fREML", discrete=T, nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
@@ -180,7 +180,7 @@ for(i in 4){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(40,5), by=WaterYear) + WaterYear,
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5), by=WaterYear) + WaterYear,
                      data = temp_dataset, method="fREML", discrete=T, nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
@@ -196,9 +196,9 @@ for(i in 5){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
-    new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL))+
-                       te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "tp","cc"), k=c(40,5,7),xt = list(list(bnd = border.aut,nmax=1500),NULL,NULL)),
-                     data = temp_dataset, method="fREML", discrete=T, nthreads=3, knots =knots_grid)
+    new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(25,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL))+
+                       te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "cc","tp"), k=c(25,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL)),
+                     data = temp_dataset, method="fREML", nthreads=3, knots =knots_grid)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -257,8 +257,7 @@ for(i in 1:N_model){
 
 Cross_Validation_Summary
 
-write.csv(Cross_Validation_Summary,"Cross_Validation_Results.csv",row.names = F)
-
+write.csv(Cross_Validation_Summary,file.path(results_root,paste("Cross_Validation_Results",Sys.Date(),".csv",sep="")),row.names = F)
 
 
 #####################################################Extra code
