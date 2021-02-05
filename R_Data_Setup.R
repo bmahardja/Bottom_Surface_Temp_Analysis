@@ -53,9 +53,7 @@ border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
 #Load integrated temperature dataset and region shape files-------------------------------
 ###################################################
 
-#Same steps from Sam's Temperature QAQC R script
-
-is.even <- function(x) as.integer(x) %% 2 == 0
+#Similar steps taken from Sam's Temperature QAQC R script
 
 # Load Delta Shapefile from Brian
 Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp"))%>%
@@ -95,10 +93,10 @@ Data <- wq()%>%
 # This will be used to set a boundary for this analysis focused on well-sampled regions.
 WQ_stations<-Data%>%
   st_drop_geometry()%>%
-  filter(Source%in%c("FMWT", "STN", "SKT", "20mm", "EMP", "Suisun"))%>%
+  filter(Year>=2011)%>% #Filter just year 2011 and after because of the issue noted below of limited spatial scope prior to 2011
   group_by(StationID, Source, Latitude, Longitude)%>%
   summarise(N=n(), .groups="drop")%>% # Calculate how many times each station was sampled
-  filter(N>30 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >50 times when deciding which regions to retain. 
+  filter(N>25 & !StationID%in%c("20mm 918", "STN 918"))%>% # Only keep stations sampled >25 times when deciding which regions to retain. 
   # "20mm 918", "STN 918" are far south of the rest of the well-sampled sites and are not sampled year round, so we're removing them to exclude that far southern region
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326, remove=FALSE)%>% # Convert to sf object
   st_transform(crs=st_crs(Delta))%>%
@@ -107,10 +105,11 @@ WQ_stations<-Data%>%
 # Remove any subregions that do not contain at least one of these >30 samples stations from the major monitoring programs
 Delta <- Delta%>%
   filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
+
 # Visualize sampling regions of major surveys
 ggplot(data=Delta,aes(label=SubRegion))+geom_sf()+geom_sf_text()
 
-# Now filter data to only include this final set of subregions, and any stations outside the convex hull formed by the >50 samples stations from the major monitoring programs
+# Now filter data to only include this final set of subregions, and any stations outside the convex hull formed by the >25 samples stations from the major monitoring programs
 Data<-Data%>%
   filter(SubRegion%in%unique(Delta$SubRegion))%>%
   st_join(WQ_stations%>%
@@ -121,7 +120,6 @@ Data<-Data%>%
           join=st_intersects)%>%
   filter(IN)%>%
   dplyr::select(-IN)%>%
-  mutate(Group=if_else(is.even(Year), 1, 2))%>%
   mutate_at(vars(Date_num, Longitude, Latitude, Time_num, Year, Julian_day), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T))) # Create centered and standardized versions of covariates
 
 ######## Sam's code ends here ###########################
