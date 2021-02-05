@@ -6,7 +6,6 @@ library(mgcv)
 library(AICcmodavg)
 
 source("soap_checker/soap_check.R")
-# No need to specify absolute file paths in an Rstudio project (if you open it as a project).
 data_root<-file.path("data-raw")
 
 #Read in bay-Delta shape outline shape file that Mike Beakes created
@@ -117,36 +116,34 @@ temp_dataset$WaterYear<-as.factor(temp_dataset$WaterYear)
 model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5)),
                               data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_01_thinspline_xy_jd)
-#summary(model_01_thinspline_xy_jd)
-#R-sq.(adj) =  0.185   Deviance explained = 19.2%
+summary(model_01_thinspline_xy_jd)
+#R-sq.(adj) =  0.352   Deviance explained = 35.7%
 AICc(model_01_thinspline_xy_jd)
-#8940.718
-#Try k=13 for julian day (1 for each month)
-#Try k=30  vs 50 and plot results for spatial component
+#12134.72
 
 model_02_thinspline_xy_ta <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(25,7)),
                                  data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_02_thinspline_xy_ta)
 summary(model_02_thinspline_xy_ta)
-#R-sq.(adj) =  0.276   Deviance explained = 28.7%
+#R-sq.(adj) =  0.422   Deviance explained = 42.7%
 AICc(model_02_thinspline_xy_ta)
-#8053.53
+#11076.24
 
 model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(25,5,7)),
                               data = temp_dataset, method="fREML", nthreads=3)
 #gam.check(model_03_thinspline_xy_jd_ta)
-#summary(model_03_thinspline_xy_jd_ta)
-#R-sq.(adj) =  0.366   Deviance explained = 38.9%
+summary(model_03_thinspline_xy_jd_ta)
+#R-sq.(adj) =  0.541   Deviance explained = 55.5%
 AICc(model_03_thinspline_xy_jd_ta)
-#7173.249
+#9083.439
 
 ##Add year interaction model
 model_04_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5), by=WaterYear)+WaterYear,
                                  data = temp_dataset, method="fREML", nthreads=3)
 summary(model_04_thinspline_xy_jd_yr)
-#R-sq.(adj) =  0.242   Deviance explained = 27.4%
+#R-sq.(adj) =  0.352   Deviance explained = 35.7%
 AICc(model_04_thinspline_xy_jd_yr)
-#10548.09
+#12135.25
 
 ######################################################################################################
 ################# Model run with soap film smooth ############
@@ -187,18 +184,28 @@ model_k[[8]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c(
                   data = temp_dataset, method="fREML", nthreads=3)
 model_k[[9]]<-bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(50,5)),
                   data = temp_dataset, method="fREML", nthreads=3)
-summary(model_k[[1]])
 
+############
+#Evaluate adjusted R squared changes
 #https://stat.ethz.ch/R-manual/R-patched/library/mgcv/html/summary.gam.html
-for (i in 1:9){
-  print(summary(model_k[[i]])$r.sq)
-}
+k_test_results_Rsq <- vector("numeric", 9L)
 
 for (i in 1:9){
-  print(AICc(model_k[[i]]))
+  k_test_results_Rsq[i]<- summary(model_k[[i]])$r.sq
+}
+plot(k_test_results_Rsq)
+#Looks like 35 might be the best number
+
+#Evaluate AICc changes
+k_test_results_AIC <- vector("numeric", 9L)
+
+for (i in 1:9){
+  k_test_results_AIC[i]<- AICc(model_k[[i]])
 }
 
-#k=25 for x and y spatial components seem to be most balanced between fit and complexity based on AICc and adjusted R^2
+plot(k_test_results_AIC)
+
+#k=35 for x and y spatial components seem to be most balanced between fit and complexity based on AICc and adjusted R^2
 
 
 
