@@ -26,6 +26,7 @@ library(broom)
 
 #Set up a path for datasets and shapefiles
 data_root<-file.path("data-raw")
+results_root<-file.path("results")
 
 ###################################################
 ################# Setting Boundary ################
@@ -105,6 +106,12 @@ WQ_stations<-Data%>%
 # Remove any subregions that do not contain at least one of these >30 samples stations from the major monitoring programs
 Delta <- Delta%>%
   filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
+
+# Write out Delta shapefile for later use in making figures and plots
+st_write(Delta,append = F, file.path(results_root,paste0( "SFE_regions", "Final.shp")))
+
+# Save WQ station file for setting boundaries later on
+saveRDS(WQ_stations, file.path(results_root,"WQ_Station_boundaries.Rds"))
 
 # Visualize sampling regions of major surveys
 ggplot(data=Delta,aes(label=SubRegion))+geom_sf()+geom_sf_text()
