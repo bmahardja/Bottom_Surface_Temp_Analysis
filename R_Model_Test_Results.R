@@ -267,3 +267,62 @@ newdata<-expand.grid(Temperature_anomaly_spatial= c(-1.5,0,1.5),
 #Add prediction from model
 model_predictions<-predict(model_05_soapfilm_xy_jd_ta, newdata=newdata, type="response",discrete=F, se.fit=TRUE, n.threads=3) # Create predictions
 
+#Save model prediction results
+saveRDS(model_predictions, file.path(results_root,"Model_Predictions_for_Figures.Rds"))
+
+
+
+newdata<-newdata%>%
+  mutate(Prediction=model_predictions$fit)%>%
+  mutate(SE=model_predictions$se.fit,
+         L95=Prediction-SE*1.96,
+         U95=Prediction+SE*1.96)
+
+
+#Create figures for each season, time of day, and residual temperature
+newdata$Prediction
+str(newdata)
+
+newdata_edit<-newdata
+newdata_edit<-newdata_edit[!is.na(newdata_edit$Prediction),]
+newdata_edit$Prediction
+str(newdata_edit)
+newdata_edit$Temperature_anomaly_category<-as.factor(newdata_edit$Temperature_anomaly_category)
+
+
+png(filename=file.path(results_root,"Model_prediction_map.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+ggplot(data=newdata_edit)+
+  geom_sf(aes(colour=Prediction),pch=15)+
+  scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata_edit$Prediction),max(newdata_edit$Prediction),(max(newdata_edit$Prediction)-min(newdata_edit$Prediction))/5))+
+  theme_dark()+
+  facet_grid(Season~Temperature_anomaly_category)+
+  theme(plot.title=element_text(size=28), 
+        axis.text.x=element_text(size=21, color="black"), 
+        axis.text.y = element_text(size=20, color="black"), 
+        axis.title.x = element_text(size = 22, angle = 00), 
+        axis.title.y = element_text(size = 22, angle = 90),
+        strip.text = element_text(size = 20))+
+  labs(x="Temperature Anomaly", y="Season")
+dev.off()
+
+min(newdata$Prediction)
+
+newdata_edit$Temperature_prediction<-predict(temperature_anomaly_GAM_spatial,newdata_edit)
+newdata_edit$Temperature_prediction<-newdata_edit$Temperature_prediction+as.numeric(newdata_edit$Temperature_anomaly_category)
+
+png(filename=file.path(results_root,"Model_temperature_map.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+ggplot(data=newdata_edit)+
+  geom_sf(aes(colour=Temperature_prediction),pch=15)+
+  scale_colour_gradient(low = "yellow",high = "red",breaks=seq(min(newdata_edit$Temperature_prediction),max(newdata_edit$Temperature_prediction),(max(newdata_edit$Temperature_prediction)-min(newdata_edit$Temperature_prediction))/5))+
+  theme_dark()+
+  facet_grid(Season~Temperature_anomaly_category)+
+  theme(plot.title=element_text(size=28), 
+        axis.text.x=element_text(size=21, color="black"), 
+        axis.text.y = element_text(size=20, color="black"), 
+        axis.title.x = element_text(size = 22, angle = 00), 
+        axis.title.y = element_text(size = 22, angle = 90),
+        strip.text = element_text(size = 20))+
+  labs(x="Temperature Anomaly", y="Season")
+dev.off()
