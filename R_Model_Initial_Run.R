@@ -7,6 +7,7 @@ library(AICcmodavg)
 
 source("soap_checker/soap_check.R")
 data_root<-file.path("data-raw")
+results_root<-file.path("results")
 
 #Read in bay-Delta shape outline shape file that Mike Beakes created
 Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))

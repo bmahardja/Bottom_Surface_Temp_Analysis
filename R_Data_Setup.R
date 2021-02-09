@@ -85,7 +85,11 @@ Data <- wq()%>%
   mutate(Julian_day = yday(Date), # Create julian day variable
          Month_fac=factor(Month), # Create month factor variable
          Source_fac=factor(Source),
-         Year_fac=factor(Year))%>% 
+         Year_fac=factor(Year),
+         Season=case_when(Julian_day<=80 | Julian_day>=356 ~ "Winter", # Create a variable for season
+                          Julian_day>80 & Julian_day<=172 ~ "Spring",
+                          Julian_day>=173 & Julian_day<=264 ~ "Summer",
+                          Julian_day>=265 & Julian_day<=355 ~ "Fall"))%>% 
   mutate(Date_num = as.numeric(Date))%>%  # Create numeric version of date; keep just in case we need it
   mutate(Time_num=as.numeric(Time)) # Create numeric version of time (=seconds since midnight); keep just in case we need it
 
