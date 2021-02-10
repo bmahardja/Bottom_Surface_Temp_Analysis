@@ -108,12 +108,15 @@ temp_dataset$WaterYear<-as.factor(temp_dataset$WaterYear)
 ################# Model run with soap film smooth ############
 ######################################################################################################
 
-model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL))+
-                                    te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL)),
+model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=250),NULL,NULL))+
+                                    te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=250),NULL,NULL)),
                                   data = temp_dataset, method="fREML", nthreads=3, knots =knots_grid)
 
+summary(model_05_soapfilm_xy_jd_ta)
+gam.check(model_05_soapfilm_xy_jd_ta)
 
-
+#R-sq.(adj) =  0.552   Deviance explained = 56.8%
+#fREML = 4765.5  Scale est. = 0.1447    n = 9463
 #Save model results
 saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Best_Model.Rds"))
 
@@ -126,8 +129,6 @@ model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Best_Model.Rds"))
 
 #Create prediction column (not sure if necessary)
 temp_dataset$Temperature_difference_prediction<-as.vector(predict(model_05_soapfilm_xy_jd_ta, newdata=temp_dataset, type="response", se.fit=F, n.threads=3))
-
-test2<-predict(model_05_soapfilm_xy_jd_ta, newdata=temp_dataset, type="response",discrete=F, se.fit=T, n.threads=3)
 
 hist(temp_dataset$Temperature_anomaly_spatial)
 
@@ -149,25 +150,25 @@ Delta_outline<-st_read(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay
 
 
 #Function from Sam to create prediction dataset
-WQ_pred<-function(Full_data=temp_dataset,
+WQ_pred_grid<-function(Full_data=temp_dataset,
                   n=100, 
                   Temperature_anomaly_range=c(-1.5,0,1.5),
                   Julian_days_range=yday(ymd(paste("2001", c(1,4,7,10), "15", sep="-"))) #Jan, Apr, Jul, and Oct 15 for a non-leap year
 ){
   
   # Create point locations on a grid for predictions
-  Points<-st_make_grid(Delta, n=n)%>%
+  Points<-st_make_grid(Delta, n=100)%>%
     st_as_sf(crs=st_crs(Delta)) %>%
-    st_filter(Delta_water%>%
-                st_transform(crs=st_crs(Delta)))%>% #Filter through the map figure file
     st_filter(Delta_outline%>%
-                st_transform(crs=st_crs(Delta)))%>% #Filter through the outline shape
-    st_join(WQ_stations%>% # Applying the same approach we did to the full data: remove any points outside the convex hull formed by major survey stations sampled >50 times
-            st_union()%>%
-            st_convex_hull()%>%
-            st_as_sf()%>%
-            mutate(IN=TRUE),
-          join=st_intersects)%>%
+                st_transform(crs=st_crs(Delta)))%>% #Filter by the outline map from Mike Beakes
+    st_filter(Delta_water%>% #Filter again for islands using the map figure water layer
+                st_transform(crs=st_crs(Delta)))%>%
+    st_join(WQ_stations%>% # Applying the same approach we did to the full data: remove any points outside the convex hull formed by major survey stations sampled >x times
+              st_union()%>%
+              st_convex_hull()%>%
+              st_as_sf()%>%
+              mutate(IN=TRUE),
+            join=st_intersects)%>%
     filter(IN)%>%
     dplyr::select(-IN)%>%
     st_centroid()%>% # The prior grid was actually a set of polygons, this picks the center point of each
@@ -175,12 +176,12 @@ WQ_pred<-function(Full_data=temp_dataset,
     as_tibble()%>%
     mutate(Location=1:nrow(.))
   
-  # Create dataset for each year and season showing which subregions were sampled
+  # Create dataset for each year and season showing which regions were sampled and have the right temperature anomaly range
   Data_effort <- Full_data%>%
     group_by(SubRegion, Season,Temperature_anomaly_category)%>%
     summarise(N=n())%>%
     ungroup()%>%
-    left_join(Delta_subregions, by="SubRegion")%>%
+    left_join(Delta, by="SubRegion")%>%
     dplyr::select(-geometry)
   
   # Create full dataset for predictions
@@ -194,24 +195,83 @@ WQ_pred<-function(Full_data=temp_dataset,
                             Julian_day>80 & Julian_day<=172 ~ "Spring",
                             Julian_day>=173 & Julian_day<=264 ~ "Summer",
                             Julian_day>=265 & Julian_day<=355 ~ "Fall"))%>%
-    st_as_sf(coords=c("X", "Y"), crs="NAD83", remove=FALSE)%>% # Turn into sf object
-    #st_transform(crs=st_crs(Delta))%>% # transform to crs of Delta shapefile
+    st_as_sf(coords=c("X", "Y"),crs=st_crs(Delta), remove=FALSE)%>%
     st_join(Delta, join = st_intersects)%>%
     filter(!is.na(SubRegion))%>% # Make sure all points are within our desired subregions
     left_join(Data_effort, by=c("SubRegion", "Season","Temperature_anomaly_category"))%>% # Use the Data_effort key created above to remove points in subregions that were not sampled that region, season, and year.
-    filter(!is.na(N))
+    filter(!is.na(N))%>%
+    rename(x=X,y=Y)
   return(newdata)
 }
 
 #Use the function to create prediction data frame
+newdata <- WQ_pred_grid()
 
-newdata_bottom <- WQ_pred(Full_data=temp_dataset, 
-                          Julian_days_range = yday(ymd(paste("2001", 1:12, "15", sep="-"))))
+#Add prediction from model
+model_predictions<-predict(model_05_soapfilm_xy_jd_ta, newdata=newdata, type="response",discrete=F, se.fit=TRUE, n.threads=3) # Create predictions
+
+#Save model prediction results for later use
+saveRDS(model_predictions, file.path(results_root,"Model_Predictions_for_Figures.Rds"))
+
+#Reconfigure the data set
+newdata<-newdata%>%
+  mutate(Prediction=model_predictions$fit)%>%
+  mutate(SE=model_predictions$se.fit,
+         L95=Prediction-SE*1.96,
+         U95=Prediction+SE*1.96)
+
+#There are a bunch of NAs from model predictions, presumably new data being outside the boundaries?
+newdata$Prediction
+
+#Remove NAs
+newdata_edit<-newdata[!is.na(newdata$Prediction),]
+#Change temp anomaly category to factor
+newdata_edit$Temperature_anomaly_category<-as.factor(newdata_edit$Temperature_anomaly_category)
+
+#Create figure
+png(filename=file.path(results_root,"Model_prediction_map.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+ggplot(data=newdata_edit)+
+  geom_sf(aes(colour=Prediction),pch=15)+
+  scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata_edit$Prediction),max(newdata_edit$Prediction),(max(newdata_edit$Prediction)-min(newdata_edit$Prediction))/5))+
+  theme_dark()+
+  facet_grid(Season~Temperature_anomaly_category)+
+  theme(plot.title=element_text(size=28), 
+        axis.text.x=element_text(size=21, color="black"), 
+        axis.text.y = element_text(size=20, color="black"), 
+        axis.title.x = element_text(size = 22, angle = 00), 
+        axis.title.y = element_text(size = 22, angle = 90),
+        strip.text = element_text(size = 20))+
+  labs(x="Temperature Anomaly", y="Season")
+dev.off()
 
 
+#Create dataset for surface temperature "prediction" to see what the surface temperature looks like
+newdata_edit$Temperature_prediction<-predict(temperature_anomaly_GAM_spatial,newdata_edit)
+newdata_edit$Temperature_prediction<-newdata_edit$Temperature_prediction+as.numeric(newdata_edit$Temperature_anomaly_category)
 
+#Create function to create ggplot
+temperature_plot<-function(Full_data=newdata_edit,
+                       Season_set="Winter" #Jan, Apr, Jul, and Oct 15 for a non-leap year
+){
+  newplot<-ggplot(data=(Full_data %>% filter(Season==Season_set)))+
+    geom_sf(aes(colour=Temperature_prediction),pch=15)+
+    scale_colour_gradient(low = "yellow",high = "red")+
+    theme_dark()+
+    theme(plot.title=element_text(size=28), 
+          axis.text.x=element_text(size=21, color="black"), 
+          axis.text.y = element_text(size=20, color="black"), 
+          axis.title.x = element_text(size = 22, angle = 00), 
+          axis.title.y = element_text(size = 22, angle = 90),
+          strip.text = element_text(size = 20))+
+    facet_grid(~Temperature_anomaly_category)+
+    labs(x="Surface Temperature", y=Season_set)
+  return(newplot)
+}
 
-
+plot_winter_surface<-temperature_plot(Season_set = "Winter")
+plot_winter_surface
+#############################################
 #############CODE TESTING BELOW
 
 Points<-st_make_grid(Delta, n=100)%>%
@@ -326,3 +386,7 @@ ggplot(data=newdata_edit)+
         strip.text = element_text(size = 20))+
   labs(x="Temperature Anomaly", y="Season")
 dev.off()
+
+#For appendix, try -2,-1.5,1, followed by -0.5,0,0.5, and then 1,1.5,2
+
+#Need to create a temperature heatmap figure
