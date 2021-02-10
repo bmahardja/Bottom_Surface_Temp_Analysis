@@ -5,6 +5,7 @@ library(rgdal)
 library(mgcv)
 library(AICcmodavg)
 library(sf)
+library(ggpubr)
 
 source("soap_checker/soap_check.R")
 data_root<-file.path("data-raw")
@@ -229,9 +230,7 @@ newdata_edit<-newdata[!is.na(newdata$Prediction),]
 newdata_edit$Temperature_anomaly_category<-as.factor(newdata_edit$Temperature_anomaly_category)
 
 #Create figure
-png(filename=file.path(results_root,"Model_prediction_map.png"), units="in",type="cairo", bg="white", height=18, 
-    width=20, res=500, pointsize=20)
-ggplot(data=newdata_edit)+
+plot_model_results<-ggplot(data=newdata_edit)+
   geom_sf(aes(colour=Prediction),pch=15)+
   scale_colour_gradient2(low = "blue",high = "red",midpoint = 0,breaks=seq(min(newdata_edit$Prediction),max(newdata_edit$Prediction),(max(newdata_edit$Prediction)-min(newdata_edit$Prediction))/5))+
   theme_dark()+
@@ -243,6 +242,11 @@ ggplot(data=newdata_edit)+
         axis.title.y = element_text(size = 22, angle = 90),
         strip.text = element_text(size = 20))+
   labs(x="Temperature Anomaly", y="Season")
+
+
+png(filename=file.path(results_root,"Model_prediction_map.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+plot_model_results
 dev.off()
 
 
@@ -250,28 +254,85 @@ dev.off()
 newdata_edit$Temperature_prediction<-predict(temperature_anomaly_GAM_spatial,newdata_edit)
 newdata_edit$Temperature_prediction<-newdata_edit$Temperature_prediction+as.numeric(newdata_edit$Temperature_anomaly_category)
 
-#Create function to create ggplot
+#Create function to create ggplot for surface temperature
 temperature_plot<-function(Full_data=newdata_edit,
-                       Season_set="Winter" #Jan, Apr, Jul, and Oct 15 for a non-leap year
+                       Season_set="Winter"
 ){
   newplot<-ggplot(data=(Full_data %>% filter(Season==Season_set)))+
     geom_sf(aes(colour=Temperature_prediction),pch=15)+
     scale_colour_gradient(low = "yellow",high = "red")+
     theme_dark()+
-    theme(plot.title=element_text(size=28), 
-          axis.text.x=element_text(size=21, color="black"), 
-          axis.text.y = element_text(size=20, color="black"), 
+    theme(axis.text.x = element_blank(), 
+          axis.text.y = element_blank(), 
+          axis.ticks = element_blank(),
           axis.title.x = element_text(size = 22, angle = 00), 
           axis.title.y = element_text(size = 22, angle = 90),
-          strip.text = element_text(size = 20))+
+          strip.text = element_text(size = 20),
+          legend.text = element_text(size=18),
+          legend.key.size = unit(1.5, 'cm')
+          )+
+    guides(colour=guide_colourbar(ticks.colour = "black"))+
     facet_grid(~Temperature_anomaly_category)+
-    labs(x="Surface Temperature", y=Season_set)
+    labs(y=Season_set,colour=NULL)
   return(newplot)
 }
 
+#Create surface temp plots for each season
+plot_summer_surface<-temperature_plot(Season_set = "Summer")
 plot_winter_surface<-temperature_plot(Season_set = "Winter")
-plot_winter_surface
-#############################################
+plot_fall_surface<-temperature_plot(Season_set = "Fall")
+plot_spring_surface<-temperature_plot(Season_set = "Spring")
+
+#Print out figure
+png(filename=file.path(results_root,"Model_temperature_map.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+ggarrange(plot_spring_surface, plot_summer_surface, plot_fall_surface, plot_winter_surface, ncol=1, nrow=4)
+dev.off()
+
+plot_surface_full<-ggarrange(plot_spring_surface, plot_summer_surface, plot_fall_surface, plot_winter_surface, ncol=1, nrow=4)
+
+
+#Check limits for temperature difference predictions
+summary(newdata_edit$Prediction)
+
+#Create function to create ggplot for model results based on season
+model_results_plot<-function(Full_data=newdata_edit,
+                           Season_set="Winter"
+){
+  newplot<-ggplot(data=(Full_data %>% filter(Season==Season_set)))+
+    geom_sf(aes(colour=Prediction),pch=15)+
+    scale_colour_gradient2(limits=c(-3.5,0.5),low = "blue",high = "red",midpoint = 0)+
+    theme_dark()+
+    facet_grid(~Temperature_anomaly_category)+
+    theme(axis.text.x = element_blank(), 
+          axis.text.y = element_blank(), 
+          axis.ticks = element_blank(),
+          axis.title.x = element_text(size = 22, angle = 00), 
+          axis.title.y = element_text(size = 22, angle = 90),
+          strip.text = element_text(size = 20),
+          legend.text = element_text(size=18),
+          legend.key.size = unit(1.5, 'cm')
+    )+
+    labs(y=Season_set,colour=NULL)
+  return(newplot)
+}
+
+plot_summer_results<-model_results_plot(Season_set = "Summer")
+plot_winter_results<-model_results_plot(Season_set = "Winter")
+plot_spring_results<-model_results_plot(Season_set = "Spring")
+plot_fall_results<-model_results_plot(Season_set = "Fall")
+
+
+plot_results_full<-ggarrange(plot_spring_results, plot_summer_results, plot_fall_results, plot_winter_results, ncol=1, nrow=4)
+
+#Print out figure
+png(filename=file.path(results_root,"Model_full_results.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+ggarrange(plot_surface_full, plot_results_full, ncol=2, nrow=1)
+dev.off()
+
+
+###########
 #############CODE TESTING BELOW
 
 Points<-st_make_grid(Delta, n=100)%>%
