@@ -9,28 +9,13 @@ source("soap_checker/soap_check.R")
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
 
-#Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
 ###################################################
 ################# Set up Boundary and Knots ############
 ###################################################
 
-Delta.xy.aut <- tidy(Delta.aut)
-head(Delta.xy.aut)
-
-deltacoords <- Delta.xy.aut %>% dplyr::select(long,lat,piece)
-names(deltacoords) <- c("x", "y", "piece")
-borderlist <- split(deltacoords, deltacoords$piece)
-names(borderlist)
-
-Delta.xy.aut <- Delta.xy.aut %>% rename(x = long, y = lat)
-#Delta.xy.aut$piece
-
-border.aut <- lapply(borderlist, "[", c(1,2))
-nr <- seq(1,length(borderlist))
-
-border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
+#Read boundary R file for soap-film smoother
+border.aut<-readRDS(file.path(results_root,"Soap_film_boundaries.Rds"))
 
 #Load knots
 knots_grid <- read.csv("knots_grid.csv")
@@ -111,6 +96,10 @@ temp_dataset$WaterYear<-as.factor(temp_dataset$WaterYear)
 ################# Model run with just thin spline and cyclic cubic spline ############
 ######################################################################################################
 
+
+model_01_test <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(25)),
+                                 data = temp_dataset, method="fREML", nthreads=3)
+summary(model_01_test)
 
 #Run models with Julian day and "temperature anomaly"
 
@@ -208,11 +197,80 @@ plot(k_test_results_AIC)
 
 #k=35 for x and y spatial components seem to be most balanced between fit and complexity based on AICc and adjusted R^2
 
+######################################################################################################
+################# List of models to choose k  ############
+######################################################################################################
+
+model_k <-list( )
+#Start from k=10 and increase by 5 until 40
+model_k[[1]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(10)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[2]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(15)),
+                 data = temp_dataset, method="fREML", nthreads=3)
+model_k[[3]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(20)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[4]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(25)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[5]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(30)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[6]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[7]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(40)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[8]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(45)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+model_k[[9]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(50)),
+                  data = temp_dataset, method="fREML", nthreads=3)
+
+############
+#Evaluate adjusted R squared changes
+#https://stat.ethz.ch/R-manual/R-patched/library/mgcv/html/summary.gam.html
+k_test_results_Rsq <- vector("numeric", 9L)
+
+for (i in 1:9){
+  k_test_results_Rsq[i]<- summary(model_k[[i]])$r.sq
+}
+plot(k_test_results_Rsq)
+#Looks like 35 might be the best number
+
+#Evaluate AICc changes
+k_test_results_AIC <- vector("numeric", 9L)
+
+for (i in 1:9){
+  k_test_results_AIC[i]<- AICc(model_k[[i]])
+}
+
+plot(k_test_results_AIC)
 
 
+############
+model_k_temp_anomaly <-list( )
 
+model_k_temp_anomaly[[1]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,3)),
+                               data = temp_dataset, method="fREML", nthreads=3)
+model_k_temp_anomaly[[2]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,4)),
+                               data = temp_dataset, method="fREML", nthreads=3)
+model_k_temp_anomaly[[3]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,5)),
+                               data = temp_dataset, method="fREML", nthreads=3)
+model_k_temp_anomaly[[4]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,6)),
+                               data = temp_dataset, method="fREML", nthreads=3)
+model_k_temp_anomaly[[5]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,7)),
+                               data = temp_dataset, method="fREML", nthreads=3)
+model_k_temp_anomaly[[6]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,8)),
+                               data = temp_dataset, method="fREML", nthreads=3)
 
+k_test_anomaly_results_Rsq <- vector("numeric", 6L)
 
+for (i in 1:6){
+  k_test_anomaly_results_Rsq[i]<- summary(model_k_temp_anomaly[[i]])$r.sq
+}
+plot(k_test_anomaly_results_Rsq)
+
+for (i in 1:6){
+  k_test_anomaly_results_AIC[i]<- AICc(model_k_temp_anomaly[[i]])
+}
+
+plot(k_test_anomaly_results_AIC)
 
 ############### Fit test model  ######################
 #m_test <- bam(Temperature_bottom ~ s(x, y, k = 5, bs = "so", xt = list(bnd = border.aut,nmax=1000)),

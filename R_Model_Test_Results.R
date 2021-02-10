@@ -11,12 +11,12 @@ source("soap_checker/soap_check.R")
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
 
-#Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
 ###################################################
 ################# Set up Boundary and Knots ############
 ###################################################
+#Read in bay-Delta shape outline shape file that Mike Beakes created
+Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
 Delta.xy.aut <- tidy(Delta.aut)
 head(Delta.xy.aut)
@@ -269,7 +269,8 @@ temperature_plot<-function(Full_data=newdata_edit,
           axis.title.y = element_text(size = 22, angle = 90),
           strip.text = element_text(size = 20),
           legend.text = element_text(size=18),
-          legend.key.size = unit(1.5, 'cm')
+          legend.key.size = unit(1.5, 'cm'),
+          plot.title = element_text(size=22)
           )+
     guides(colour=guide_colourbar(ticks.colour = "black"))+
     facet_grid(~Temperature_anomaly_category)+
@@ -282,6 +283,9 @@ plot_summer_surface<-temperature_plot(Season_set = "Summer")
 plot_winter_surface<-temperature_plot(Season_set = "Winter")
 plot_fall_surface<-temperature_plot(Season_set = "Fall")
 plot_spring_surface<-temperature_plot(Season_set = "Spring")
+
+#Add title
+plot_spring_surface<-plot_spring_surface+labs(title="Surface temperature")
 
 #Print out figure
 png(filename=file.path(results_root,"Model_temperature_map.png"), units="in",type="cairo", bg="white", height=18, 
@@ -311,7 +315,8 @@ model_results_plot<-function(Full_data=newdata_edit,
           axis.title.y = element_text(size = 22, angle = 90),
           strip.text = element_text(size = 20),
           legend.text = element_text(size=18),
-          legend.key.size = unit(1.5, 'cm')
+          legend.key.size = unit(1.5, 'cm'),
+          plot.title = element_text(size=22)
     )+
     labs(y=Season_set,colour=NULL)
   return(newplot)
@@ -322,12 +327,13 @@ plot_winter_results<-model_results_plot(Season_set = "Winter")
 plot_spring_results<-model_results_plot(Season_set = "Spring")
 plot_fall_results<-model_results_plot(Season_set = "Fall")
 
+plot_spring_results<-plot_spring_results+labs(title="Bottom temperature difference from surface")
 
 plot_results_full<-ggarrange(plot_spring_results, plot_summer_results, plot_fall_results, plot_winter_results, ncol=1, nrow=4)
 
 #Print out figure
 png(filename=file.path(results_root,"Model_full_results.png"), units="in",type="cairo", bg="white", height=18, 
-    width=20, res=500, pointsize=20)
+    width=20, res=300, pointsize=20)
 ggarrange(plot_surface_full, plot_results_full, ncol=2, nrow=1)
 dev.off()
 

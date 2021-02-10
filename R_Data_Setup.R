@@ -29,32 +29,10 @@ data_root<-file.path("data-raw")
 results_root<-file.path("results")
 
 ###################################################
-################# Setting Boundary ################
-###################################################
-
-#Read in bay-Delta shape outline shape file that Mike Beakes created
-Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
-
-Delta.xy.aut <- tidy(Delta.aut)
-head(Delta.xy.aut)
-
-deltacoords <- Delta.xy.aut %>% dplyr::select(long,lat,piece)
-names(deltacoords) <- c("x", "y", "piece")
-borderlist <- split(deltacoords, deltacoords$piece)
-names(borderlist)
-
-Delta.xy.aut <- Delta.xy.aut %>% rename(x = long, y = lat)
-
-border.aut <- lapply(borderlist, "[", c(1,2))
-nr <- seq(1,length(borderlist))
-
-border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
-
-###################################################
 #Load integrated temperature dataset and region shape files-------------------------------
 ###################################################
 
-#Similar steps taken from Sam's Temperature QAQC R script
+# Similar steps taken from Sam's R script
 
 # Load Delta Shapefile from Brian
 Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp"))%>%
@@ -64,7 +42,7 @@ Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.
 # Visualize regions
 ggplot(data=Delta,aes(label=SubRegion))+geom_sf()+geom_sf_text()
 
-# Load data
+# Load data from 'discretewq' package
 Data <- wq()%>%
   filter(!is.na(Temperature) & !is.na(Datetime) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Date) & !is.na(Temperature_bottom))%>% #Remove any rows with NAs in our key variables
   filter(Temperature !=0)%>% #Remove 0 temps
@@ -85,11 +63,7 @@ Data <- wq()%>%
   mutate(Julian_day = yday(Date), # Create julian day variable
          Month_fac=factor(Month), # Create month factor variable
          Source_fac=factor(Source),
-         Year_fac=factor(Year),
-         Season=case_when(Julian_day<=80 | Julian_day>=356 ~ "Winter", # Create a variable for season
-                          Julian_day>80 & Julian_day<=172 ~ "Spring",
-                          Julian_day>=173 & Julian_day<=264 ~ "Summer",
-                          Julian_day>=265 & Julian_day<=355 ~ "Fall"))%>% 
+         Year_fac=factor(Year))%>% 
   mutate(Date_num = as.numeric(Date))%>%  # Create numeric version of date; keep just in case we need it
   mutate(Time_num=as.numeric(Time)) # Create numeric version of time (=seconds since midnight); keep just in case we need it
 
@@ -107,7 +81,7 @@ WQ_stations<-Data%>%
   st_transform(crs=st_crs(Delta))%>%
   st_join(Delta) # Add subregions
 
-# Remove any subregions that do not contain at least one of these >30 samples stations from the major monitoring programs
+# Remove any subregions that do not contain at least one of these >25 samples stations from the major monitoring programs
 Delta <- Delta%>%
   filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
 
@@ -133,49 +107,76 @@ Data<-Data%>%
   dplyr::select(-IN)%>%
   mutate_at(vars(Date_num, Longitude, Latitude, Time_num, Year, Julian_day), list(s=~(.-mean(., na.rm=T))/sd(., na.rm=T))) # Create centered and standardized versions of covariates
 
-######## Sam's code ends here ###########################
-#Create new dataframe to keep the original data
-Data_subset<- Data
+#######Sam's script ends here
 
-#Add Water Year variable
-Data_subset$WaterYear<-ifelse(month(Data_subset$Date)>=10,year(Data_subset$Date)+1,year(Data_subset$Date))
+###################################################
+################# Setting Boundary ################
+###################################################
 
-#Add UTM coordinates
-UTM_coordinates<-sf::st_coordinates(Data_subset)
-Data_subset$x<-UTM_coordinates[,c("X")]
-Data_subset$y<-UTM_coordinates[,c("Y")]
+#Read in bay-Delta shape outline shape file that Mike Beakes created
+Delta.aut <- readOGR(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
 
-#Also subset data to 2011 and on---
-#As they have the best spatiotemporal coverage
-#Data from previous years only come from fixed stations sampled once a month with limited geographical distribution
-#See below
-Data_subset_pre_2011 <- Data_subset %>% filter(year(Date)<2011)
+Delta.xy.aut <- tidy(Delta.aut)
+head(Delta.xy.aut)
+
+deltacoords <- Delta.xy.aut %>% dplyr::select(long,lat,piece)
+names(deltacoords) <- c("x", "y", "piece")
+borderlist <- split(deltacoords, deltacoords$piece)
+names(borderlist)
+
+Delta.xy.aut <- Delta.xy.aut %>% rename(x = long, y = lat)
+
+border.aut <- lapply(borderlist, "[", c(1,2))
+nr <- seq(1,length(borderlist))
+
+border.aut <- lapply(nr, function(n) as.list.data.frame(border.aut[[n]]))
+
+######################################################################################################
+################# Add a few more columns, inspect data and subset to years with good coverage ################
+######################################################################################################
+
+# Add Water Year variable
+Data$WaterYear<-ifelse(month(Data$Date)>=10,year(Data$Date)+1,year(Data$Date))
+
+# Make water year factor
+Data$WaterYear<-as.factor(Data$WaterYear)
+
+# Add UTM coordinates
+UTM_coordinates<-sf::st_coordinates(Data)
+Data$x<-UTM_coordinates[,c("X")]
+Data$y<-UTM_coordinates[,c("Y")]
+
+# Also subset data to 2011 and on---
+# As they have the best spatiotemporal coverage
+# Data from previous years only come from fixed stations sampled once a month with limited geographical distribution
+# See below
+Data_subset_pre_2011 <- Data %>% filter(year(Date)<2011)
 str(Data_subset_pre_2011)
 plot(Delta.aut, col="grey")
 points(Data_subset_pre_2011$x,Data_subset_pre_2011$y, pch=21, bg="purple")
 
-Data_subset_post_2011 <- Data_subset %>% filter(year(Date)>=2011)
+# Use data since 2011
+Data_subset_post_2011 <- Data %>% filter(year(Date)>=2011)
 
-
-#Remove temperatures that seem unreasonable for bottom and surface (those below 5 C and above 30 C)
+# Remove temperatures that seem unreasonable for bottom and surface (those below 5 C and above 30 C)
 summary(Data_subset_post_2011$Temperature_bottom)
 summary(Data_subset_post_2011$Temperature)
-#There were data points with bottom temp at 0, and another with surface temp at 33 C while bottom temp were listed as 23 (clearly a mistake)
+# There were data points with bottom temp at 0, and another with surface temp at 33 C while bottom temp were listed as 23 (clearly a mistake)
 Data_subset_post_2011<- Data_subset_post_2011 %>% filter(Temperature_bottom>=5&Temperature_bottom<=30)
 Data_subset_post_2011<- Data_subset_post_2011 %>% filter(Temperature>=5&Temperature<=30)
 hist(Data_subset_post_2011$Temperature_bottom)
 hist(Data_subset_post_2011$Temperature)
 
-#Keep only data points that are inside the boundaries
+# Keep only data points that are inside the boundaries
 Data_subset_post_2011_inside <- Data_subset_post_2011[with(Data_subset_post_2011, inSide(bnd = border.aut, x, y)), ]
-#Keep data points outside the boundaries just to see
+# Keep data points outside the boundaries just to see
 Data_subset_post_2011_outside <- Data_subset_post_2011[!with(Data_subset_post_2011, inSide(bnd = border.aut, x, y)), ]
 
-#Plot to show points and boundaries
+# Plot to show points and boundaries
 plot(Delta.aut, col="grey")
 points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg="purple")
 points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="red")
-#Only 1 point is outside the boundary, EMP site that's somehow located on land
+# Only 1 point is outside the boundary, EMP site that's somehow located on land
 
 ###################################################
 ################# Set up knots ############
@@ -190,7 +191,7 @@ names(gp) <- c("x","y")
 knots_grid <- gp[with(gp, inSide(border.aut, x, y)), ]
 row.names(knots_grid)<-1:nrow(knots_grid)
 
-
+# Plot in map just to evaluate the spread of knots
 plot(Delta.aut, col="grey")
 points(knots_grid, pch=21, bg="orange")
 text(knots_grid, labels=rownames(knots_grid))
@@ -221,31 +222,44 @@ ggplot()+
 knots_grid_reduced<-knots_grid_sf_edited%>%
   st_drop_geometry()
 
-########################################################
-# cut out data points close to boundaries as and save as a different dataset
 
-ggplot()+
-  geom_sf(data=Delta.aut_sf)+
-  geom_sf(data=Data_subset_post_2011_inside, color="red")+
-  theme_bw()
+######################################################################################################
+################# Calculate temperature difference and create temperature anomaly calculation ############
+######################################################################################################
+###  Dataset is essentially final at this point 
 
-distances<-Delta.aut_sf %>%
-  st_cast(to = 'LINESTRING') %>% #TUrn polygon into linestring
-  st_distance(y = Data_subset_post_2011_inside) # Get distance of each point from that perimeter linestring
+# Calculate difference of bottom temperature from surface temperature as response variable
+Data_subset_post_2011_inside$Temperature_difference <- Data_subset_post_2011_inside$Temperature_bottom-Data_subset_post_2011_inside$Temperature
+hist(Data_subset_post_2011_inside$Temperature_difference)
 
-
-#remove knots within 400 m of boundary
-Data_subset_post_2011_inside_edited<-Data_subset_post_2011_inside[-which(distances<units::set_units(400, "m")),]
-
-ggplot()+
-  geom_sf(data=Delta.aut_sf)+
-  geom_sf(data=Data_subset_post_2011_inside, color="red")+
-  geom_sf(data=Data_subset_post_2011_inside_edited, color="blue")+
-  theme_bw()
+# Temperature Anomaly Model with just julian day
+# Julian day and temperature model
+temperature_anomaly_GAM<- gam(Temperature ~ s(Julian_day_s,bs="cc",k=5),data=Data_subset_post_2011_inside)
+summary(temperature_anomaly_GAM)
+gam.check(temperature_anomaly_GAM)
+plot(temperature_anomaly_GAM)
+# k=5 seems to make the most sense based on evaluating plot wiggliness and very small changes in R^2 as we increase K
+# Model is not used any longer because we would like to adjust temperature based on space in addition to time (i.e., season)
 
 
-Data_subset_post_2011_inside_edited<-Data_subset_post_2011_inside_edited%>%
-  st_drop_geometry()
+## Construct temperature anomaly model with longitude and latitude on top of julian day
+temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(10,5)),data=Data_subset_post_2011_inside)
+summary(temperature_anomaly_GAM_spatial)
+# R-sq.(adj) =  0.907   Deviance explained = 90.7%
+
+#gam.check(temperature_anomaly_GAM_spatial)
+
+# K index is low at 0.52, and edf is pretty close to k', but the goal was to remove collinearity, not fit
+# k'  edf k-index p-value    
+# 39.0 35.8    0.52  <2e-16 ***
+
+#Add temperature anomaly term to the dataset
+Data_subset_post_2011_inside$Temperature_prediction_spatial <-predict(temperature_anomaly_GAM_spatial,Data_subset_post_2011_inside)
+Data_subset_post_2011_inside$Temperature_anomaly_spatial <-Data_subset_post_2011_inside$Temperature - Data_subset_post_2011_inside$Temperature_prediction_spatial 
+hist(Data_subset_post_2011_inside$Temperature_anomaly_spatial)
+
+# Save model for later use in plotting results
+saveRDS(temperature_anomaly_GAM_spatial, file.path(results_root,"Temperature_anomaly_spatial_GAM.Rds"))
 
 ###################################################
 ################# Export data and knots ############
@@ -258,58 +272,15 @@ points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg
 points(knots_grid_reduced, pch=21, bg="white")
 points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="yellow")
 
-#Export out data
+# Save boundaries file
+saveRDS(border.aut, file.path(results_root,"Soap_film_boundaries.Rds"))
+
+# Export out knots
+write.csv(knots_grid_reduced, file = "knots_grid.csv",row.names = F)
+
+# Export out data
+saveRDS(Data_subset_post_2011_inside, "temperature_dataset.Rds")
+
+## If we want csv instead below
 Data_subset_post_2011_inside$geometry<-NULL
 write.csv(Data_subset_post_2011_inside, file = "temperature_dataset.csv",row.names = F)
-write.csv(knots_grid_reduced, file = "knots_grid.csv",row.names = F)
-write.csv(Data_subset_post_2011_inside_edited, file = "temperature_dataset_edited.csv",row.names = F)
-
-
-
-
-
-
-
-
-
-#####Extra Codes below
-
-
-
-##########################################
-#CODE TO COMPARE DATASET
-##########################################
-temp_dataset<-read.csv("temperature_dataset_old.csv")
-
-library(compareDF)
-library(htmlTable)
-
-new<-as.data.frame(unique(Data_subset_post_2011_inside[,c("Source","Station","Date","Latitude","Longitude")]))
-new$Date<-as.Date(new$Date)
-
-old<-as.data.frame(unique(temp_dataset[,c("Source","Station","Date","Latitude","Longitude")]))
-old$Date<-as.Date(old$Date)
-
-
-plot(old$y~old$x, pch=21, bg="blue")
-points(new$y~new$x, pch=21, bg="red")
-
-ctable = compare_df(new, old,c("Latitude","Longitude"))
-
-print(ctable$comparison_table_diff)
-print(ctable$html_output)
-ctable$change_count
-ctable$change_summary
-ctable$comparison_df
-
-
-write.csv(ctable$comparison_df, file = "temperature_dataset_mismatch.csv",row.names = F)
-
-
-
-
-tabletest<-anti_join(old, new)
-
-
-plot(old$Latitude~old$Longitude, pch=21, bg="blue")
-points(tabletest$Latitude~tabletest$Longitude, pch=21, bg="yellow")
