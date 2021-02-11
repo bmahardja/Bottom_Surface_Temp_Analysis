@@ -191,16 +191,196 @@ remove(model_k_temp_anomaly)
 #NOTE: k for julian day was already determined in Data setup file
 
 ######################################################################################################
-################# Model run with just thin spline and cyclic cubic spline ############
+################# Model runs for eventual extraction of AICc and R squared (and other metrics) ############
 ######################################################################################################
 
+#Space only model
 model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
                      data = temp_dataset, method="fREML", nthreads=3)
-summary(model_01_thinspline_xy)
 
-
-model_01_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5)),
+#Space and season (julian day) model
+model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5)),
                                  data = temp_dataset, method="fREML", nthreads=3)
-#gam.check(model_01_thinspline_xy_jd)
-summary(model_01_thinspline_xy_jd)
+
+#Space and season (julian day) and year model - to capture any interannual variability
+model_03_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5), by=WaterYear)+WaterYear,
+                                    data = temp_dataset, method="fREML", nthreads=3)
+
+#Space and season (julian day) and temperature anomaly (based on either interannual variability or time of day difference)
+model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(35,5,7)),
+                                    data = temp_dataset, method="fREML", nthreads=3)
+
+#Space and season (julian day) and temperature anomaly + soap-film smoother to minimize bleedover from Suisun Marsh and Cache Slough Complex
+time1_final_model <- Sys.time() #Calculate how long it takes to run model
+model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
+                                    te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
+                                  data = temp_dataset, method="fREML", nthreads=3, knots = knots_grid)
+time2_final_model <- Sys.time()
+time1_final_model - time2_final_model
+#Final model takes awhile to run, save it as Rds so it doesn't have to be repeated every time
+saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Best_Model.Rds"))
+
+
+######################################################################################################
+################# k-fold Cross Validation Runs ############
+######################################################################################################
+
+#Cross validation test ---------------------------------------------------------------
+
+time1_cross_validation <- Sys.time() #To calculate how long it takes to run cross-validation
+
+#Number of models to be tested
+N_model<-5
+
+#with K=10
+k <- 10 #the number of folds
+set.seed(2021) #To replicate results if necessary
+folds <- cvFolds(NROW(temp_dataset), K=k)
+
+#Set up data list
+Cross_Validation_Results=list()
+
+for(i in 1:N_model){
+  Cross_Validation_Results[[i]]<-temp_dataset
+  Cross_Validation_Results[[i]]$holdoutpred <- rep(0,nrow(temp_dataset))
+}
+
+########## MODEL 01
+for(i in 1){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
+                     data = temp_dataset, method="fREML", nthreads=3)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
+
+
+########## MODEL 02
+
+for(i in 2){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5)),
+                     data = temp_dataset, method="fREML", nthreads=3)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
+
+
+########## MODEL 03
+
+for(i in 3){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5), by=WaterYear)+WaterYear,
+                     data = temp_dataset, method="fREML", nthreads=3)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
+
+########## MODEL 04
+
+for(i in 4){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(35,5,7)),
+                     data = temp_dataset, method="fREML", nthreads=3)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
+
+########## MODEL 05 - Soap-film smoother, final model
+
+for(i in 5){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
+                       te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
+                     data = temp_dataset, method="fREML", nthreads=3, knots = knots_grid)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
+
+
+#Create a new column for kfold number
+for(i in 1:N_model){
+  Cross_Validation_Results[[i]]$kfold<-0
+}
+
+#Add kfold number to the kfold column
+for(i in 1:N_model){
+  for(j in 1:k){
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], "kfold"]<-j
+  }
+}
+
+#Change column to factor
+for(i in 1:N_model){
+  Cross_Validation_Results[[i]]$kfold<-as.factor(Cross_Validation_Results[[i]]$kfold)
+  Cross_Validation_Results[[i]]$resid_CV<-(Cross_Validation_Results[[i]]$Temperature_difference-Cross_Validation_Results[[i]]$holdoutpred)^2
+}
+
+#To calculate how long it takes to run cross-validation
+time2_cross_validation <- Sys.time() 
+time1_cross_validation-time2_cross_validation
+
+#Save cross validation results
+saveRDS(Cross_Validation_Results, file="Cross_Validation_Results.Rds")
+
+###########Start here to skip long cross-validation process
+
+#Read saved cross validation results
+Cross_Validation_Results<-readRDS("Cross_Validation_Results.Rds")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###Create list for RMSE
+RMSE_results=list()
+for(i in 1:N_model){
+  RMSE_results[[i]]<- Cross_Validation_Results[[i]] %>% group_by(kfold) %>% summarise(RMSE=sqrt(sum(resid_CV)/n()))
+}
+
+
+#Create calculation for predicting sign of bottom-surface temperature difference
+for(i in 1:N_model){
+  Cross_Validation_Results[[i]]$holdoutpred_CorrectSign<-ifelse(Cross_Validation_Results[[i]]$Temperature_difference==0,NA,(ifelse(Cross_Validation_Results[[i]]$Temperature_difference>0&Cross_Validation_Results[[i]]$holdoutpred>0|Cross_Validation_Results[[i]]$Temperature_difference<0&Cross_Validation_Results[[i]]$holdoutpred<0,1,0)))
+}
+
 
