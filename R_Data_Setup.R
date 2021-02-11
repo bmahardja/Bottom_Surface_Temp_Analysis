@@ -1,3 +1,6 @@
+###################################################
+#Script to prepare dataset for analysis-------------------------------
+###################################################
 
 #Install some github packages to pull Sam Bashevkin's integrated dataset
 
@@ -273,7 +276,7 @@ points(knots_grid_reduced, pch=21, bg="white")
 points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="yellow")
 
 # Save boundaries file
-saveRDS(border.aut, file.path(results_root,"Soap_film_boundaries.Rds"))
+saveRDS(border.aut, "Soap_film_boundaries.Rds")
 
 # Export out knots
 write.csv(knots_grid_reduced, file = "knots_grid.csv",row.names = F)
