@@ -131,7 +131,7 @@ for(i in 1){
   validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
   
   new_model <- bam(Temperature_difference ~ te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5)),
-               data = temp_dataset, method="fREML", nthreads=3) 
+               data = train, method="fREML", nthreads=3) 
   newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
   
   Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -148,7 +148,7 @@ for(i in 2){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(25,7)),
-                     data = temp_dataset, method="fREML", nthreads=3)
+                     data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -165,7 +165,7 @@ for(i in 3){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(25,5,7)),
-                    data = temp_dataset, method="fREML", nthreads=3)
+                    data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -181,7 +181,7 @@ for(i in 4){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(25,5), by=WaterYear) + WaterYear,
-                     data = temp_dataset, method="fREML", nthreads=3)
+                     data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -198,7 +198,7 @@ for(i in 5){
     
     new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(25,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL))+
                        te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw", "cc","tp"), k=c(25,5,7),xt = list(list(bnd = border.aut,nmax=1000),NULL,NULL)),
-                     data = temp_dataset, method="fREML", nthreads=3, knots =knots_grid)
+                     data = train, method="fREML", nthreads=3, knots =knots_grid)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use

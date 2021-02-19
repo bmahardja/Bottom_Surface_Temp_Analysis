@@ -7,7 +7,6 @@ library(AICcmodavg)
 library(sf)
 library(ggpubr)
 
-source("soap_checker/soap_check.R")
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
 
@@ -228,6 +227,9 @@ newdata$Prediction
 newdata_edit<-newdata[!is.na(newdata$Prediction),]
 #Change temp anomaly category to factor
 newdata_edit$Temperature_anomaly_category<-as.factor(newdata_edit$Temperature_anomaly_category)
+#Change 1.5 C temp to +1.5 C for better clarity
+levels(newdata_edit$Temperature_anomaly_category)[levels(newdata_edit$Temperature_anomaly_category)=="1.5"] <- "+1.5"
+
 
 #Create figure
 plot_model_results<-ggplot(data=newdata_edit)+

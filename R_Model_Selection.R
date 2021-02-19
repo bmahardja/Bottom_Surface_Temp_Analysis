@@ -9,6 +9,7 @@ library(rgdal)
 library(mgcv)
 library(AICcmodavg)
 library(ggpubr)
+library(cvTools)
 
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
@@ -216,10 +217,14 @@ model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s
                                     te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
                                   data = temp_dataset, method="fREML", nthreads=3, knots = knots_grid)
 time2_final_model <- Sys.time()
-time1_final_model - time2_final_model
+time2_final_model-time1_final_model
+#Generally ~22 mins
 #Final model takes awhile to run, save it as Rds so it doesn't have to be repeated every time
 saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Best_Model.Rds"))
 
+#######For skipping soap-film smoother model step
+#Read saved model here
+model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Best_Model.Rds"))
 
 ######################################################################################################
 ################# k-fold Cross Validation Runs ############
@@ -252,7 +257,7 @@ for(i in 1){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
-                     data = temp_dataset, method="fREML", nthreads=3)
+                     data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -269,7 +274,7 @@ for(i in 2){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5)),
-                     data = temp_dataset, method="fREML", nthreads=3)
+                     data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -286,7 +291,7 @@ for(i in 3){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5), by=WaterYear)+WaterYear,
-                     data = temp_dataset, method="fREML", nthreads=3)
+                     data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -302,7 +307,7 @@ for(i in 4){
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
     
     new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(35,5,7)),
-                     data = temp_dataset, method="fREML", nthreads=3)
+                     data = train, method="fREML", nthreads=3)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -319,7 +324,7 @@ for(i in 5){
     
     new_model <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
                        te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
-                     data = temp_dataset, method="fREML", nthreads=3, knots = knots_grid)
+                     data = train, method="fREML", nthreads=3, knots = knots_grid)
     newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
     
     Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
@@ -359,18 +364,6 @@ saveRDS(Cross_Validation_Results, file="Cross_Validation_Results.Rds")
 Cross_Validation_Results<-readRDS("Cross_Validation_Results.Rds")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ###Create list for RMSE
 RMSE_results=list()
 for(i in 1:N_model){
@@ -383,4 +376,32 @@ for(i in 1:N_model){
   Cross_Validation_Results[[i]]$holdoutpred_CorrectSign<-ifelse(Cross_Validation_Results[[i]]$Temperature_difference==0,NA,(ifelse(Cross_Validation_Results[[i]]$Temperature_difference>0&Cross_Validation_Results[[i]]$holdoutpred>0|Cross_Validation_Results[[i]]$Temperature_difference<0&Cross_Validation_Results[[i]]$holdoutpred<0,1,0)))
 }
 
+#Create data frame for model selection summary table
+Model_Selection_Summary<-data.frame(ModelNumber=1:N_model,RMSE=0,Pearson=0,Rsquared=0,AICc=0)
+
+#Calculate overall RMSE and Pearson correlation for each model
+#https://stats.stackexchange.com/questions/85507/what-is-the-rmse-of-k-fold-cross-validation
+
+for(i in 1:N_model){
+  Model_Selection_Summary$RMSE[i]<- sqrt(sum((RMSE_results[[i]]$RMSE)^2)/k)
+  Model_Selection_Summary$Pearson[i]<-cor(Cross_Validation_Results[[i]]$holdoutpred, Cross_Validation_Results[[i]]$Temperature_difference, method="pearson")
+  Model_Selection_Summary$CorrectSign[i]<-mean(Cross_Validation_Results[[i]]$holdoutpred_CorrectSign,na.rm=T)
+}
+
+
+#Add R squared to table
+Model_Selection_Summary$Rsquared[1]<- summary(model_01_thinspline_xy)$r.sq
+Model_Selection_Summary$Rsquared[2]<- summary(model_02_thinspline_xy_jd)$r.sq
+Model_Selection_Summary$Rsquared[3]<- summary(model_03_thinspline_xy_jd_yr)$r.sq
+Model_Selection_Summary$Rsquared[4]<- summary(model_04_thinspline_xy_jd_ta)$r.sq
+Model_Selection_Summary$Rsquared[5]<- summary(model_05_soapfilm_xy_jd_ta)$r.sq
+
+#Add R squared to table
+Model_Selection_Summary$AICc[1]<- AICc(model_01_thinspline_xy)
+Model_Selection_Summary$AICc[2]<- AICc(model_02_thinspline_xy_jd)
+Model_Selection_Summary$AICc[3]<- AICc(model_03_thinspline_xy_jd_yr)
+Model_Selection_Summary$AICc[4]<- AICc(model_04_thinspline_xy_jd_ta)
+Model_Selection_Summary$AICc[5]<- AICc(model_05_soapfilm_xy_jd_ta)
+
+write.csv(Model_Selection_Summary,file.path(results_root,paste("Model_Selection_Results",Sys.Date(),".csv",sep="")),row.names = F)
 
