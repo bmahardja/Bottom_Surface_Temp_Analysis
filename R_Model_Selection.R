@@ -232,7 +232,7 @@ saveRDS(model_04_thinspline_xy_jd_ta, file.path(results_root,"Model_04_thinsplin
 time1_final_model <- Sys.time() #Calculate how long it takes to run model
 model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(k_spatial_comp,5,k_temp_anomaly),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
                                     te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(k_spatial_comp,5,k_temp_anomaly),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
-                                  data = temp_dataset, method="fREML", knots = knots_grid)
+                                  data = temp_dataset, method="fREML", knots = knots_grid, family=scat, cluster=cl)
 time2_final_model <- Sys.time()
 time2_final_model-time1_final_model
 
