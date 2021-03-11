@@ -11,6 +11,7 @@ library(AICcmodavg)
 library(ggpubr)
 library(cvTools)
 library(parallel)
+library(gridExtra)
 
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
@@ -216,7 +217,7 @@ model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, 
 model_03_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5), by=WaterYear)+WaterYear,
                                     data = temp_dataset, method="fREML", family=scat, cluster=cl)
 #Model takes awhile to run without parallel cores, save it as Rds so it doesn't have to be repeated every time
-saveRDS(model_03_thinspline_xy_jd_yr, file.path(results_root,"Model_space_season.Rds"))
+saveRDS(model_03_thinspline_xy_jd_yr, file.path(results_root,"Model_03_space_season_year.Rds"))
 
 #Space and season (julian day) and temperature anomaly (based on either interannual variability or time of day difference)
 time1_conventional_model <- Sys.time() #Calculate how long it takes to run model
@@ -225,7 +226,7 @@ model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_
 
 time2_conventional_model <- Sys.time() #Calculate how long it takes to run model
 time2_conventional_model-time1_conventional_model
-saveRDS(model_04_thinspline_xy_jd_ta, file.path(results_root,"Model_thinspline.Rds"))
+saveRDS(model_04_thinspline_xy_jd_ta, file.path(results_root,"Model_04_thinspline.Rds"))
 
 #Space and season (julian day) and temperature anomaly + soap-film smoother to minimize bleedover from Suisun Marsh and Cache Slough Complex
 time1_final_model <- Sys.time() #Calculate how long it takes to run model
@@ -237,20 +238,23 @@ time2_final_model-time1_final_model
 
 #Generally ~13 mins at desktop
 #Model takes awhile to run, save it as Rds so it doesn't have to be repeated every time
-saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Model_best.Rds"))
+saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Model_05_soapfilm.Rds"))
 
-#######For skipping soap-film smoother model step
-#Read saved model here
-model_03_thinspline_xy_jd_yr<-readRDS(file.path(results_root,"Model_space_season.Rds"))
-model_04_thinspline_xy_jd_ta<-readRDS(file.path(results_root,"Model_thinspline.Rds"))
-model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_best.Rds"))
-
-
+#Print out model diagnostics plot for best model
 png(filename=file.path(results_root,"Model_diagnostics_scat.png"), units="in",type="cairo", bg="white", height=15, 
     width=15, res=300, pointsize=20)
 par(mfrow=c(2,2)) 
-gam.check(model_04_thinspline_xy_jd_ta)
+gam.check(model_05_soapfilm_xy_jd_ta)
 dev.off()
+
+
+#######For skipping soap-film smoother model step
+#Read saved model here
+model_03_thinspline_xy_jd_yr<-readRDS(file.path(results_root,"Model_03_space_season_year.Rds"))
+model_04_thinspline_xy_jd_ta<-readRDS(file.path(results_root,"Model_04_thinspline.Rds"))
+model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_05_soapfilm.Rds"))
+
+
 ######################################################################################################
 ################# k-fold Cross Validation Runs ############
 ######################################################################################################
@@ -258,6 +262,9 @@ dev.off()
 #Cross validation test ---------------------------------------------------------------
 
 time1_cross_validation <- Sys.time() #To calculate how long it takes to run cross-validation
+
+#Remove spatial component from dataset
+temp_dataset$geometry<-NULL
 
 #Number of models to be tested
 N_model<-5
