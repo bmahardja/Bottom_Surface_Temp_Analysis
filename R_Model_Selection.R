@@ -10,9 +10,13 @@ library(mgcv)
 library(AICcmodavg)
 library(ggpubr)
 library(cvTools)
+library(parallel)
 
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
+
+nc<-3 # number of cores
+cl <- makeCluster(nc)
 
 ######################################################################################################
 ################# Load prepared datasets ############
@@ -35,23 +39,23 @@ model_k_spatial <-list( )
 
 #Start from k=10 and increase by 5 until 50
 model_k_spatial[[1]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(10)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[2]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(15)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[3]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(20)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[4]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(25)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[5]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(30)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[6]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[7]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(40)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[8]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(45)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 model_k_spatial[[9]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(50)),
-                  data = temp_dataset, method="fREML", nthreads=3)
+                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
 
 
 #Extract adjusted R squared changes
@@ -100,7 +104,6 @@ plot_k_spatial_select_02<-ggplot() +
   labs(x="k", y="AICc")
 #plot_k_spatial_select_02
 ########
-#Looks like 35 might be the best number
 
 #Save figure to results folder
 tiff(filename=file.path(results_root,"Figure_spatial_component_k_selection.tiff"), 
@@ -111,27 +114,31 @@ dev.off()
 #Free up some space
 remove(model_k_spatial)
 
+#Looks like 20 might be the best number
+#Set the k for spatial components
+k_spatial_comp<-3
+
 ######################################################################################################
 ################# List of models to choose the proper k  for temperature anomaly covariate  ############
 ######################################################################################################
 model_k_temp_anomaly <-list( )
 
-model_k_temp_anomaly[[1]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,3)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[2]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,4)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[3]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,5)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[4]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,6)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[5]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,7)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[6]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,8)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[7]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,9)),
-                               data = temp_dataset, method="fREML", nthreads=3)
-model_k_temp_anomaly[[8]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(35,10)),
-                               data = temp_dataset, method="fREML", nthreads=3)
+model_k_temp_anomaly[[1]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,3)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[2]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,4)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[3]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,5)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[4]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,6)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[5]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,7)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[6]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,8)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[7]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,9)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+model_k_temp_anomaly[[8]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,10)),
+                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
 
 #Extract adjusted R squared changes
 k_test_results_Rsq <- vector("numeric", length(model_k_temp_anomaly))
@@ -178,7 +185,6 @@ plot_k_temp_anomaly_select_02<-ggplot() +
   labs(x="k", y="AICc")
 #plot_k_temp_anomaly_select_02
 ########
-#Looks like 7 might be the best number
 
 #Save figure to results folder
 tiff(filename=file.path(results_root,"Figure_temp_anomaly_k_selection.tiff"), 
@@ -190,30 +196,37 @@ dev.off()
 remove(model_k_temp_anomaly)
 
 #NOTE: k for julian day was already determined in Data setup file
+#Looks like 3 might be the best number
+#Set the k for temp anomaly
+k_temp_anomaly<-3
 
 ######################################################################################################
 ################# Model runs for eventual extraction of AICc and R squared (and other metrics) ############
 ######################################################################################################
 
 #Space only model
-model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
-                     data = temp_dataset, method="fREML", nthreads=3)
+model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(k_spatial_comp)),
+                     data = temp_dataset, method="fREML", family=scat,cluster=cl)
 
 #Space and season (julian day) model
-model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5)),
-                                 data = temp_dataset, method="fREML", nthreads=3)
+model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5)),
+                                 data = temp_dataset, method="fREML", family=scat,cluster=cl)
 
 #Space and season (julian day) and year model - to capture any interannual variability
-model_03_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(35,5), by=WaterYear)+WaterYear,
-                                    data = temp_dataset, method="fREML", nthreads=3)
+model_03_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5), by=WaterYear)+WaterYear,
+                                    data = temp_dataset, method="fREML", family=scat,cluster=cl)
 
 #Space and season (julian day) and temperature anomaly (based on either interannual variability or time of day difference)
-model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(35,5,7)),
-                                    data = temp_dataset, method="fREML", nthreads=3)
+time1_conventional_model <- Sys.time() #Calculate how long it takes to run model
+model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(k_spatial_comp,5,k_temp_anomaly)),
+                                    data = temp_dataset, family=scat, discrete=T, method="fREML", family=scat,cluster=cl)
+
+time2_conventional_model <- Sys.time() #Calculate how long it takes to run model
+time2_conventional_model-time1_conventional_model
 
 #Space and season (julian day) and temperature anomaly + soap-film smoother to minimize bleedover from Suisun Marsh and Cache Slough Complex
 time1_final_model <- Sys.time() #Calculate how long it takes to run model
-model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
+model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(k_spatial_comp,5,k_temp_anomaly),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
                                     te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(35,5,7),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
                                   data = temp_dataset, method="fREML", nthreads=3, knots = knots_grid)
 time2_final_model <- Sys.time()
@@ -226,6 +239,12 @@ saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Best_Model.Rds"))
 #Read saved model here
 model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Best_Model.Rds"))
 
+
+png(filename=file.path(results_root,"Model_diagnostics_scat.png"), units="in",type="cairo", bg="white", height=15, 
+    width=15, res=300, pointsize=20)
+par(mfrow=c(2,2)) 
+gam.check(model_04_thinspline_xy_jd_ta)
+dev.off()
 ######################################################################################################
 ################# k-fold Cross Validation Runs ############
 ######################################################################################################
