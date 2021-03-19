@@ -206,7 +206,7 @@ plot_fall_surface<-temperature_plot(Season_set = "Fall")
 plot_spring_surface<-temperature_plot(Season_set = "Spring")
 
 #Add title
-plot_spring_surface<-plot_spring_surface+labs(title="Surface temperature")
+#plot_spring_surface<-plot_spring_surface+labs(title="Surface temperature")
 
 
 #Print out figure
@@ -249,12 +249,12 @@ plot_winter_results<-model_results_plot(Season_set = "Winter")
 plot_spring_results<-model_results_plot(Season_set = "Spring")
 plot_fall_results<-model_results_plot(Season_set = "Fall")
 
-plot_spring_results<-plot_spring_results+labs(title="Bottom temperature difference from surface")
+#plot_spring_results<-plot_spring_results+labs(title="Bottom temperature difference from surface")
 
 plot_results_full<-ggarrange(plot_spring_results, plot_summer_results, plot_fall_results, plot_winter_results, ncol=1, nrow=4)
 
 #Print out figure
-png(filename=file.path(results_root,"Model_full_results.png"), units="in",type="cairo", bg="white", height=18, 
+png(filename=file.path(results_root,"Model_full_results.png"), units="in",type="cairo", bg="white", height=15, 
     width=20, res=300, pointsize=20)
 ggarrange(plot_surface_full, plot_results_full, ncol=2, nrow=1)
 dev.off()

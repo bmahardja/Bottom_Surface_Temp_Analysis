@@ -5,6 +5,8 @@ require(maps)
 require(ggspatial)
 require(viridis)
 require(deltamapr)
+require(ggrepel)
+
 
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
@@ -48,8 +50,8 @@ fig1<-ggplot() + theme_bw()+
   #geom_sf(data = Water, fill="slategray1", color="slategray2") +
   geom_sf(data = Water, fill="cadetblue1", color="cadetblue1") +
   geom_sf(data = Delta, alpha=0.1) + 
-  geom_sf(data=stations_sample_size, color="black",shape=21, size=1.5,aes(fill=SampleSize))+
-  geom_sf(data=continuous_stations, fill="red", size=1.5, shape=24)+
+  geom_sf(data=stations_sample_size, color="black",shape=21, size=2,aes(fill=SampleSize))+
+  #geom_sf(data=continuous_stations, fill="red", size=1.5, shape=24)+
   coord_sf(xlim = c(-122.2, -121.2), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          pad_y = unit(1.0, "in"),
@@ -79,3 +81,54 @@ plot(select(Delta, geometry), add=T, lwd=2)
 points(as_tibble(st_coordinates(stations_sample_size)), col="black", pch=16)
 
 Letter_locs<-locator()
+
+
+
+#####################
+#Create map for just continuous stations
+
+
+fig_cont<-ggplot() + theme_bw()+
+  #geom_sf(data = Water, fill="slategray1", color="slategray2") +
+  geom_sf(data = Water, fill="cadetblue1", color="cadetblue1") +
+  geom_sf(data = Delta, alpha=0.1) + 
+  geom_label_repel(data=continuous_stations,size=7, aes(x=Longitude,y=Latitude,label=StationName),segment.alpha=0.7,color="black")+
+  geom_sf(data=continuous_stations, fill="red", size=5, shape=24)+
+  coord_sf(xlim = c(-122.2, -121.2), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         pad_y = unit(1.0, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  annotation_scale(location = "tr", width_hint = 0.5)+
+  #scale_fill_gradient(low="white", high="blue") +
+  #theme(legend.position = "none") +
+  theme(axis.text.x = element_text(size=16, color="black"),axis.text.y = element_text(size=16, color="black"),axis.title.x=element_blank(),axis.title.y=element_blank())
+
+fig_cont
+
+tiff(filename=file.path(results_root,"Figure01_Map_Continuous.tiff"), units="in",type="cairo", bg="white", height=10, 
+     width=10, res=300, compression="lzw")
+fig_cont
+dev.off()
+
+#Just the 3 letter code
+fig_cont_short_label<-ggplot() + theme_bw()+
+  #geom_sf(data = Water, fill="slategray1", color="slategray2") +
+  geom_sf(data = Water, fill="cadetblue1", color="cadetblue1") +
+  geom_sf(data = Delta, alpha=0.1) + 
+  geom_label_repel(data=continuous_stations,size=7, aes(x=Longitude,y=Latitude,label=Station),segment.alpha=0.7,color="black")+
+  geom_sf(data=continuous_stations, fill="red", size=5, shape=24)+
+  coord_sf(xlim = c(-122.2, -121.2), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         pad_y = unit(1.0, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  annotation_scale(location = "tr", width_hint = 0.5)+
+  #scale_fill_gradient(low="white", high="blue") +
+  #theme(legend.position = "none") +
+  theme(axis.text.x = element_text(size=16, color="black"),axis.text.y = element_text(size=16, color="black"),axis.title.x=element_blank(),axis.title.y=element_blank())
+
+fig_cont_short_label
+
+tiff(filename=file.path(results_root,"Figure01_Map_Continuous_shortlabel.tiff"), units="in",type="cairo", bg="white", height=10, 
+     width=10, res=300, compression="lzw")
+fig_cont_short_label
+dev.off()
