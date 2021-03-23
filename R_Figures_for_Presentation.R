@@ -30,7 +30,16 @@ temp_dataset <- readRDS("temperature_dataset.Rds")
 #Add knots
 knots_grid <- read.csv("knots_grid.csv")
 
+######################################################################################################
+################# Histogram ############
+######################################################################################################
+temp_dataset$Temperature_difference
 
+temp_diff_histogram<-ggplot(data=temp_dataset)+
+  geom_histogram(aes(Temperature_difference),binwidth= 0.5)+
+  scale_x_continuous(breaks=seq(-4,1,0.5))
+
+temp_diff_histogram
 ######################################################################################################
 ################# Reload model ############
 ######################################################################################################
@@ -255,6 +264,49 @@ plot_results_full<-ggarrange(plot_spring_results, plot_summer_results, plot_fall
 png(filename=file.path(results_root,"Model_full_results.png"), units="in",type="cairo", bg="white", height=18, 
     width=20, res=300, pointsize=20)
 ggarrange(plot_surface_full, plot_results_full, ncol=2, nrow=1)
+dev.off()
+
+##################################################
+#Show just negative predictions
+##################################################
+
+model_results_negative_plot<-function(Full_data=newdata_edit ,
+                                          Season_set="Winter"
+){
+  newplot<-ggplot(data=(Full_data %>% filter(Season==Season_set)))+
+    geom_sf(aes(colour=Prediction),pch=15)+
+    #scale_colour_gradient(limits=c(-3.5,0),low = "blue",high="white")+
+    scale_colour_viridis_c()+
+    theme_dark()+
+    facet_grid(~Temperature_anomaly_category)+
+    theme(axis.text.x = element_blank(), 
+          axis.text.y = element_blank(), 
+          axis.ticks = element_blank(),
+          axis.title.x = element_text(size = 22, angle = 00), 
+          axis.title.y = element_text(size = 22, angle = 90),
+          strip.text = element_text(size = 20),
+          legend.text = element_text(size=18),
+          legend.key.size = unit(1.5, 'cm'),
+          plot.title = element_text(size=22)
+    )+
+    labs(y=Season_set,colour=NULL)
+  return(newplot)
+}
+
+plot_summer_neg_results<-model_results_negative_plot(Season_set = "Summer")
+plot_winter_neg_results<-model_results_negative_plot(Season_set = "Winter")
+plot_spring_neg_results<-model_results_negative_plot(Season_set = "Spring")
+plot_fall_neg_results<-model_results_negative_plot(Season_set = "Fall")
+
+
+plot_spring_neg_results<-plot_spring_neg_results+labs(title="Bottom temperature difference from surface")
+
+plot_results_neg_full<-ggarrange(plot_spring_neg_results, plot_summer_neg_results, plot_fall_neg_results, plot_winter_neg_results, ncol=1, nrow=4)
+
+
+png(filename=file.path(results_root,"Model_full_results_negative_only.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=500, pointsize=20)
+ggarrange(plot_surface_full, plot_results_neg_full, ncol=2, nrow=1)
 dev.off()
 
 ##################################################
