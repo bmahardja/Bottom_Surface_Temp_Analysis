@@ -147,6 +147,7 @@ newdata<-newdata%>%
   mutate(SE=model_predictions$se.fit,
          L95=Prediction-SE*1.96,
          U95=Prediction+SE*1.96)
+#1.96 for 95% confidence interval, 3.291 for 99.9%
 
 #There are a bunch of NAs from model predictions, presumably new data being outside the boundaries?
 newdata$Prediction

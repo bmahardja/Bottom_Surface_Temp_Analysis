@@ -1,3 +1,7 @@
+###################################################
+#Script to create maps-------------------------------
+###################################################
+
 require(dplyr)
 require(sf)
 require(ggplot2)
@@ -84,7 +88,12 @@ Letter_locs<-locator()
 
 
 
-#####################
+
+
+
+############################################
+##Figures for BDSC 2021 Presentation Only
+############################################
 #Create map for just continuous stations
 
 
