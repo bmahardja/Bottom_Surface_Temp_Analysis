@@ -1,5 +1,5 @@
 ###################################################
-#Script to conduct model selection-------------------------------
+#Script to conduct model construction and selection-------------------------------
 ###################################################
 
 library(tidyverse)
