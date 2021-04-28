@@ -30,6 +30,9 @@ temp_dataset <- readRDS("temperature_dataset.Rds")
 #Add knots
 knots_grid <- read.csv("knots_grid.csv")
 
+#Read water boundaries shape file
+Water<-st_read(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
+crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
 
 ######################################################################################################
 ################# Reload model ############
@@ -70,13 +73,13 @@ Delta_outline<-st_read(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay
 
 #Function from Sam to create prediction dataset
 WQ_pred_grid<-function(Full_data=temp_dataset,
-                       n=100, 
+                       n=150, 
                        Temperature_anomaly_range=c(-1.5,0,1.5),
                        Julian_days_range=yday(ymd(paste("2001", c(1,4,7,10), "15", sep="-"))) #Jan, Apr, Jul, and Oct 15 for a non-leap year
 ){
   
   # Create point locations on a grid for predictions
-  Points<-st_make_grid(Delta, n=100)%>%
+  Points<-st_make_grid(Delta, n=n)%>%
     st_as_sf(crs=st_crs(Delta)) %>%
     st_filter(Delta_outline%>%
                 st_transform(crs=st_crs(Delta)))%>% #Filter by the outline map from Mike Beakes
@@ -218,6 +221,7 @@ model_results_plot<-function(Full_data=newdata_edit,
           legend.key.size = unit(1.2, 'cm'),
           plot.title = element_text(size=18)
     )+
+    guides(colour=guide_colourbar(ticks.colour = "black"))+
     labs(y=NULL,colour=NULL)
   return(newplot)
 }
@@ -232,12 +236,59 @@ plot_fall_results<-model_results_plot(Season_set = "Fall")
 plot_results_full<-ggarrange(plot_winter_results, plot_spring_results, plot_summer_results, plot_fall_results, ncol=1, nrow=4, align = "hv",legend="right")
 
 #Print out figure
-png(filename=file.path(results_root,"Model_full_results.png"), units="in",type="cairo", bg="white", height=15, 
-    width=20, res=300, pointsize=20)
+tiff(filename=file.path(results_root,"Model_full_results.tiff"), units="in",type="cairo", bg="white", height=15, 
+    width=20, res=300, pointsize=10,compression="lzw")
 ggarrange(plot_surface_full, plot_results_full, ncol=2, nrow=1)
 dev.off()
 
 
+
+
+######################################################################################################
+################# Suitability of Delta Smelt ############
+######################################################################################################
+
+deltasmelt_data<-newdata_edit %>% filter(Season == "Summer",Temperature_anomaly_spatial==0) %>% 
+  mutate(Suitability_DSM=case_when(Temperature_prediction<20 ~ "<20 at surface", # Create a variable for smelt suitability index
+                                   Temperature_prediction>=20 & Temperature_prediction<=25 ~ "20-25 at surface",
+                                   Temperature_prediction>25 & Temperature_prediction+Prediction>25~ ">25 at surface and bottom",
+                                   Temperature_prediction>25 & Temperature_prediction+Prediction<=25~ ">25 at surface but <=25 at bottom"))
+
+deltasmelt_data$Suitability_DSM<-factor(deltasmelt_data$Suitability_DSM, levels = c( "20-25 at surface", ">25 at surface but <=25 at bottom",">25 at surface and bottom","<20 at surface"))
+
+color_smelt<- c('#ffe119','#800000','#f58231','#f58231')
+color_smelt<- c('#ffe119','#f58231','#800000','#f58231')
+
+plot_deltasmelt <-ggplot(data=deltasmelt_data)+
+  geom_sf(aes(colour=Suitability_DSM),pch=15)+
+  geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
+  #geom_raster(aes(x=x,y=y,fill=Suitability_DSM))+
+  #geom_sf(data = deltasmelt_fill, color="red", fill="black") +
+  scale_color_manual(values=color_smelt)+
+  theme_void()+
+  labs(title="Delta Smelt Temperature Suitability")+
+  coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(),
+        axis.title.x = element_text(size = 7, angle = 00), 
+        axis.title.y = element_text(size = 7, angle = 90),
+        strip.text = element_text(size = 7),
+        legend.text = element_text(size=8),
+        #legend.key.size = unit(0.2, 'cm'),
+        legend.position = c(0.2, 0.8),
+        legend.box.margin = margin(0, 0, 0, 0, "cm"), 
+        legend.background = element_rect(fill = "white",color="black"),
+        legend.title = element_blank(),
+        plot.title = element_text(size=8, hjust=0.5)
+  )
+#plot_deltasmelt
+
+#Print out figure
+tiff(filename=file.path(results_root,"Figure_DeltaSmelt_Suitability.tiff"), units="in",type="cairo", bg="white", height=6, 
+     width=8, res=300, pointsize=10,compression="lzw")
+plot_deltasmelt
+dev.off()
 
 ######################################################################################################
 ################# Figure for every month (12x3) ############
