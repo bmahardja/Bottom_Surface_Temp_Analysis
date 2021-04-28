@@ -13,6 +13,8 @@ library(ggpubr)
 library(gtable)
 library(grid)
 library(gridExtra)
+library(patchwork)
+library(png)
 
 data_root<-file.path("data-raw")
 results_root<-file.path("results")
@@ -130,10 +132,13 @@ WQ_pred_grid<-function(Full_data=temp_dataset,
 newdata <- WQ_pred_grid()
 
 #Add prediction from model
-model_predictions<-predict(model_05_soapfilm_xy_jd_ta, newdata=newdata, type="response",discrete=F, se.fit=TRUE) # Create predictions
+#model_predictions<-predict(model_05_soapfilm_xy_jd_ta, newdata=newdata, type="response",discrete=F, se.fit=TRUE) # Create predictions
 
 #Save model prediction results for later use
-saveRDS(model_predictions, file.path(results_root,"Model_Predictions_for_Figures.Rds"))
+#saveRDS(model_predictions, file.path(results_root,"Model_Predictions_for_Figures.Rds"))
+
+#Load model predictions for faster script run
+model_predictions<-readRDS(file.path(results_root,"Model_Predictions_for_Figures.Rds"))
 
 #Reconfigure the data set
 newdata<-newdata%>%
@@ -256,15 +261,19 @@ deltasmelt_data<-newdata_edit %>% filter(Season == "Summer",Temperature_anomaly_
 
 deltasmelt_data$Suitability_DSM<-factor(deltasmelt_data$Suitability_DSM, levels = c( "20-25 at surface", ">25 at surface but <=25 at bottom",">25 at surface and bottom","<20 at surface"))
 
-color_smelt<- c('#ffe119','#800000','#f58231','#f58231')
 color_smelt<- c('#ffe119','#f58231','#800000','#f58231')
+
+#Photo of Delta Smelt
+pic_deltasmelt <- readPNG(file.path(data_root, "DSM_edit.png"), native = TRUE)
+
 
 plot_deltasmelt <-ggplot(data=deltasmelt_data)+
   geom_sf(aes(colour=Suitability_DSM),pch=15)+
   geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
   #geom_raster(aes(x=x,y=y,fill=Suitability_DSM))+
   #geom_sf(data = deltasmelt_fill, color="red", fill="black") +
-  scale_color_manual(values=color_smelt)+
+  scale_color_manual(values=color_smelt,labels = c(expression("20-25"~degree * C *" at surface"), expression(">25"~degree * C *" at surface, but"<="25"~degree * C * " at bottom"),expression(">25"~degree * C *" at surface and bottom")))+
+  guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
   labs(title="Delta Smelt Temperature Suitability")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
@@ -275,19 +284,24 @@ plot_deltasmelt <-ggplot(data=deltasmelt_data)+
         axis.title.y = element_text(size = 7, angle = 90),
         strip.text = element_text(size = 7),
         legend.text = element_text(size=8),
-        #legend.key.size = unit(0.2, 'cm'),
-        legend.position = c(0.2, 0.8),
-        legend.box.margin = margin(0, 0, 0, 0, "cm"), 
+        #legend.key.size = unit(0.5, "lines"),
+        #legend.key.width = unit(1.2,"lines"),
+        legend.position = c(0.2, 0.1),
+        legend.margin = margin(0.2, 0.2, 0.2, 0.2, "cm"), 
         legend.background = element_rect(fill = "white",color="black"),
         legend.title = element_blank(),
         plot.title = element_text(size=8, hjust=0.5)
   )
-#plot_deltasmelt
 
 #Print out figure
 tiff(filename=file.path(results_root,"Figure_DeltaSmelt_Suitability.tiff"), units="in",type="cairo", bg="white", height=6, 
      width=8, res=300, pointsize=10,compression="lzw")
-plot_deltasmelt
+plot_deltasmelt+
+  inset_element(p = pic_deltasmelt,
+                left = 0.1,
+                bottom = 0.7,
+                right = 0.5,
+                top = 0.9)
 dev.off()
 
 ######################################################################################################
