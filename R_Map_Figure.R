@@ -45,12 +45,18 @@ WQ_stations<-readRDS(file.path(results_root,"WQ_Station_boundaries.Rds"))
 Delta <- Delta%>%  st_transform(crs=4326)%>%
   filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
 
+#Read water boundaries shape file
+Water<-st_read(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
+
+#Add crs
+crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
+
 #Delta centroids
 Delta_centroids <- st_point_on_surface(Delta)
 Delta_centroids_coords<-as.data.frame(st_coordinates(Delta_centroids))
-
 Delta_centroids <- cbind(Delta_centroids,Delta_centroids_coords)
 
+#Add nudge data to customize label and text_repel for subregions
 Delta_centroids$nudge_x<-0
 Delta_centroids$nudge_y<-0
 
@@ -91,18 +97,18 @@ Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower San Joaquin River"] <-
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower San Joaquin River"] <- -1 * 0.1 * y_range
 
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Franks Tract"] <- -1 * 0.15 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Franks Tract"] <- -1 * 0.15 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- -1 * 0.45 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- -1 * 0.30 * y_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Franks Tract"] <- -1 * 0.13 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- -1 * 0.38 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- -1 * 0.38 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Holland Cut"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Holland Cut"] <- -1 * 0.30 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Old River"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Old River"] <- -1 * 0.30 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Victoria Canal"] <- -1 * 0.15 * x_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Victoria Canal"] <- 1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Victoria Canal"] <- -1 * 0.15 * y_range
 
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.50 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.32 * y_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.42 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.25 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.05 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.30 * x_range
@@ -123,95 +129,52 @@ Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Mildred Island"] <- 1 * 0.30
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Mildred Island"] <- -1 * 0.15 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Middle River"] <- 1 * 0.30 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Middle River"] <- -1 * 0.20 * y_range
-#Read water boundaries shape file
-Water<-st_read(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
 
+#Adjust label nudge distance for continuous stations
+continuous_stations$nudge_x<-0
+continuous_stations$nudge_y<-0
 
+continuous_stations$nudge_x[continuous_stations$Station=="MRZ"] <- -1 * 0.2 * x_range
+continuous_stations$nudge_y[continuous_stations$Station=="MRZ"] <- -1 * 0.05 * y_range
+continuous_stations$nudge_x[continuous_stations$Station=="MAL"] <- -1 * 0.18 * x_range
+continuous_stations$nudge_y[continuous_stations$Station=="MAL"] <- -1 * 0.18 * y_range
+continuous_stations$nudge_x[continuous_stations$Station=="ANH"] <- -1 * 0.0 * x_range
+continuous_stations$nudge_y[continuous_stations$Station=="ANH"] <- -1 * 0.15 * y_range
+continuous_stations$nudge_x[continuous_stations$Station=="RRI"] <- 1 * 0.25 * x_range
+continuous_stations$nudge_y[continuous_stations$Station=="RRI"] <- -1 * 0.04 * y_range
 
-
-crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
-
+#Create the map
 fig1<-ggplot() + theme_bw()+
-  #geom_sf(data = Water, fill="slategray1", color="slategray2") +
   geom_sf(data = Water, fill="cadetblue1", color="cadetblue1") +
   geom_sf(data=stations_sample_size,shape=19, size=2,aes(color=SampleSize))+
-  geom_sf(data=continuous_stations, fill="red", size=1.5, shape=24)+
+  geom_sf(data=continuous_stations, fill="red", size=2.2, shape=24)+
   geom_sf(data = Delta,color="navy",fill=NA) + 
-  geom_label_repel(data=continuous_stations, aes(x=Longitude,y=Latitude,label=StationName), nudge_x=-0.2,nudge_y=-0.2,segment.alpha=0.7,color="red4")+
+  geom_label_repel(data=continuous_stations, aes(x=Longitude,y=Latitude,label=StationName), nudge_x=continuous_stations$nudge_x, nudge_y=continuous_stations$nudge_y
+                   ,segment.alpha=0.7,color="red4", size=3.5,segment.linetype="dashed")+
   geom_text_repel(data=Delta_centroids, aes(x=X,y=Y,label=SubRegion), nudge_x = Delta_centroids$nudge_x, nudge_y = Delta_centroids$nudge_y, 
-                  segment.linetype="dotted", segment.alpha=0.7, color="blue3", size=3)+
+                  segment.linetype="dotted", segment.alpha=0.7, color="blue4", size=3)+
   coord_sf(xlim = c(-122.3, -121.10), ylim = c(37.65, 38.61),crs=crsLONGLAT)  +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          pad_y = unit(1.0, "in"),
                          style = north_arrow_fancy_orienteering) +
   annotation_scale(location = "tr", width_hint = 0.5)+
-  #scale_fill_gradient(low="white", high="blue") +
+  #annotate(geom = "point", x = -121.81, y = 37.7, colour = "black", fill="red", size = 2.2,shape=24) + 
+  annotate(geom = "text", x = -122.22, y = 37.85, label="San Francisco Bay",size=3.5,hjust="left") + 
+  geom_segment(data=tibble(x=-122.22, y=37.85, xend=-122.3, yend=37.85), aes(x=x, y=y, xend=xend, yend=yend), arrow=arrow(length = unit(0.01, "npc")), size=0.5)+
   theme(legend.position = c(0.1,0.9),legend.box.background = element_rect(colour = "black"),
         axis.text.x = element_text(size=12, color="black"),axis.text.y = element_text(size=12, color="black"),
         axis.title.x=element_blank(),axis.title.y=element_blank()
   )+
-  scale_color_viridis(discrete=FALSE,name="Sample size",direction=-1)
+  scale_color_viridis(discrete=FALSE,name="Sample size",direction=-1, breaks=c(5, 25, 45, 65, 85))+
+  guides(colour=guide_colourbar(ticks.colour = "black"))
 
 
-
-
+#Print out the map
 tiff(filename=file.path(results_root,"Figure01_Map.tiff"), units="in",type="cairo", bg="white", height=10, 
     width=11, res=300, compression="lzw")
 fig1
 dev.off()
 
-
-#Load US states map
-states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))%>%
-  st_transform(crs=st_crs(SubRegions))
-california<-filter(states, ID=="california")
-
-
-####################
-
-
-base<-deltamapr::WW_Delta%>%
-  st_transform(crs=st_crs(Delta))%>%
-  st_crop(Delta)
-
-plot(select(base, geometry),reset=F, col="slategray1", border="slategray2")
-
-plot(select(Delta, geometry), add=T, lwd=2)
-points(as_tibble(st_coordinates(stations_sample_size)), col="black", pch=16)
-
-Letter_locs<-locator()
-
-
-
-
-###############################
-
-#Read Delta subregions
-Delta_subregions <- readOGR(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp"))
-Delta_subregions <- spTransform(Delta_subregions, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-
-#Load boundaries we set in the data set up r code
-WQ_stations<-readRDS(file.path(results_root,"WQ_Station_boundaries.Rds"))
-
-#Remove any subregions not used in analysis
-Delta_subregions <- Delta_subregions[which(Delta_subregions$SubRegion %in% unique(WQ_stations$SubRegion)),]
-
-#Load Delta subregions with sf package to get centroid
-Delta_subregions_st <- st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp")) %>%
-  st_transform(crs=4326)%>%
-  filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
-
-#Get centroid
-Delta_subregions_centroid <- data.frame(SubRegion = Delta_subregions_st$SubRegion,
-                                        st_coordinates(st_point_on_surface(Delta_subregions_st)))
-
-#Read water boundaries shape file
-Water <- readOGR(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
-Water <- spTransform(Water, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-
-
-
-plot(Delta_subregions)
 
 
 
@@ -266,3 +229,65 @@ tiff(filename=file.path(results_root,"Figure01_Map_Continuous_shortlabel.tiff"),
      width=10, res=300, compression="lzw")
 fig_cont_short_label
 dev.off()
+
+
+
+
+
+############################################
+############################################
+############################################
+#Unused code below
+############################################
+
+
+#Load US states map
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))%>%
+  st_transform(crs=st_crs(SubRegions))
+california<-filter(states, ID=="california")
+
+
+base<-deltamapr::WW_Delta%>%
+  st_transform(crs=st_crs(Delta))%>%
+  st_crop(Delta)
+
+plot(select(base, geometry),reset=F, col="slategray1", border="slategray2")
+
+plot(select(Delta, geometry), add=T, lwd=2)
+points(as_tibble(st_coordinates(stations_sample_size)), col="black", pch=16)
+
+Letter_locs<-locator()
+
+
+
+
+###############################
+
+#Read Delta subregions
+Delta_subregions <- readOGR(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp"))
+Delta_subregions <- spTransform(Delta_subregions, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+#Load boundaries we set in the data set up r code
+WQ_stations<-readRDS(file.path(results_root,"WQ_Station_boundaries.Rds"))
+
+#Remove any subregions not used in analysis
+Delta_subregions <- Delta_subregions[which(Delta_subregions$SubRegion %in% unique(WQ_stations$SubRegion)),]
+
+#Load Delta subregions with sf package to get centroid
+Delta_subregions_st <- st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp")) %>%
+  st_transform(crs=4326)%>%
+  filter(SubRegion%in%unique(WQ_stations$SubRegion)) 
+
+#Get centroid
+Delta_subregions_centroid <- data.frame(SubRegion = Delta_subregions_st$SubRegion,
+                                        st_coordinates(st_point_on_surface(Delta_subregions_st)))
+
+#Read water boundaries shape file
+Water <- readOGR(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
+Water <- spTransform(Water, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+
+
+plot(Delta_subregions)
+
+
