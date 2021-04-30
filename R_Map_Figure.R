@@ -91,39 +91,38 @@ Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower San Joaquin River"] <-
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower San Joaquin River"] <- -1 * 0.1 * y_range
 
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Franks Tract"] <- -1 * 0.15 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Franks Tract"] <- -1 * 0.30 * y_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Franks Tract"] <- -1 * 0.15 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- -1 * 0.45 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- -1 * 0.30 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Holland Cut"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Holland Cut"] <- -1 * 0.30 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Old River"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Old River"] <- -1 * 0.30 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Mildred Island"] <- -1 * 0.15 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Mildred Island"] <- -1 * 0.30 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Victoria Canal"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Victoria Canal"] <- -1 * 0.15 * y_range
 
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.35 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.30 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- 1 * 0.15 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Prisoners Pt"] <- 1 * 0.30 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.15 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.30 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.15 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.30 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Disappointment Slough"] <- 1 * 0.15 * x_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.50 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.32 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.25 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.05 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.30 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.14 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Disappointment Slough"] <- 1 * 0.25 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Disappointment Slough"] <- 1 * 0.20 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River near Stockton"] <- 1 * 0.30 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River near Stockton"] <- 1 * 0.15 * y_range
 
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Middle Sacramento River"] <- 1 * 0.25 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Middle Sacramento River"] <- 1 * 0.10 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Steamboat and Miner Slough"] <- 1 * 0.35 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Steamboat and Miner Slough"] <- 1 * 0.09 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Sacramento River near Ryde"] <- 1 * 0.30 * x_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Sacramento River near Ryde"] <- 1 * 0.40 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Sacramento River near Ryde"] <- 1 * 0.20 * y_range
 
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Mildred Island"] <- 1 * 0.30 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Mildred Island"] <- -1 * 0.15 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Middle River"] <- 1 * 0.30 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Middle River"] <- -1 * 0.20 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River near Stockton"] <- 1 * 0.30 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River near Stockton"] <- -1 * 0.20 * y_range
-
 #Read water boundaries shape file
 Water<-st_read(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
 
@@ -141,20 +140,23 @@ fig1<-ggplot() + theme_bw()+
   geom_label_repel(data=continuous_stations, aes(x=Longitude,y=Latitude,label=StationName), nudge_x=-0.2,nudge_y=-0.2,segment.alpha=0.7,color="red4")+
   geom_text_repel(data=Delta_centroids, aes(x=X,y=Y,label=SubRegion), nudge_x = Delta_centroids$nudge_x, nudge_y = Delta_centroids$nudge_y, 
                   segment.linetype="dotted", segment.alpha=0.7, color="blue3", size=3)+
-  coord_sf(xlim = c(-122.3, -121.16), ylim = c(37.7, 38.61),crs=crsLONGLAT)  +
+  coord_sf(xlim = c(-122.3, -121.10), ylim = c(37.65, 38.61),crs=crsLONGLAT)  +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          pad_y = unit(1.0, "in"),
                          style = north_arrow_fancy_orienteering) +
   annotation_scale(location = "tr", width_hint = 0.5)+
   #scale_fill_gradient(low="white", high="blue") +
-  scale_color_viridis(discrete=FALSE,name="N")
-  #theme(legend.position = "none") +
-  theme(axis.text.x = element_text(size=16, color="black"),axis.text.y = element_text(size=16, color="black"),axis.title.x=element_blank(),axis.title.y=element_blank())
+  theme(legend.position = c(0.1,0.9),legend.box.background = element_rect(colour = "black"),
+        axis.text.x = element_text(size=12, color="black"),axis.text.y = element_text(size=12, color="black"),
+        axis.title.x=element_blank(),axis.title.y=element_blank()
+  )+
+  scale_color_viridis(discrete=FALSE,name="Sample size",direction=-1)
+
 
 
 
 tiff(filename=file.path(results_root,"Figure01_Map.tiff"), units="in",type="cairo", bg="white", height=10, 
-    width=10, res=300, compression="lzw")
+    width=11, res=300, compression="lzw")
 fig1
 dev.off()
 
