@@ -108,20 +108,20 @@ Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Victoria Canal"] <- 1 * 0.15
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Victoria Canal"] <- -1 * 0.15 * y_range
 
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.50 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.42 * y_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River at Twitchell Island"] <- 1 * 0.3 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.25 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Upper Mokelumne River"] <- 1 * 0.05 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.30 * x_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.33 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower Mokelumne River"] <- 1 * 0.14 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Disappointment Slough"] <- 1 * 0.25 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Disappointment Slough"] <- 1 * 0.20 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="San Joaquin River near Stockton"] <- 1 * 0.30 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="San Joaquin River near Stockton"] <- 1 * 0.15 * y_range
 
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Middle Sacramento River"] <- 1 * 0.25 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Middle Sacramento River"] <- 1 * 0.10 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Steamboat and Miner Slough"] <- 1 * 0.35 * x_range
-Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Steamboat and Miner Slough"] <- 1 * 0.09 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Middle Sacramento River"] <- 1 * 0.3 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Middle Sacramento River"] <- 1 * 0.1 * y_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Steamboat and Miner Slough"] <- 1 * 0.5 * x_range
+Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Steamboat and Miner Slough"] <- 1 * 0.1 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Sacramento River near Ryde"] <- 1 * 0.40 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Sacramento River near Ryde"] <- 1 * 0.20 * y_range
 
