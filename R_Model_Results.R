@@ -317,7 +317,7 @@ plot_deltasmelt <- plot_deltasmelt+
 
 #See Myrick and Cech 2004
 
-chinooksalmon_data <- WQ_pred_grid(Julian_days_range=yday(ymd(paste("2001", "05", "15", sep="-")))) 
+chinooksalmon_data <- WQ_pred_grid(Julian_days_range=yday(ymd(paste("2001", "06", "15", sep="-")))) 
 chinooksalmon_predictions <- predict(model_05_soapfilm_xy_jd_ta, newdata=chinooksalmon_data, type="response",discrete=F, se.fit=TRUE)
 
 chinooksalmon_data$Temperature_prediction=predict(temperature_anomaly_GAM_spatial,chinooksalmon_data)
@@ -328,20 +328,20 @@ chinooksalmon_data<-chinooksalmon_data %>%
          L95=Prediction-SE*1.96,
          U95=Prediction+SE*1.96) %>% 
   filter(Temperature_anomaly_spatial==0) %>% 
-  mutate(Suitability_CHN=case_when(Temperature_prediction>=13 & Temperature_prediction<=16 & Temperature_prediction+Prediction<=16 ~ "13-16 at surface and bottom", # Create a variable for smelt suitability index
-                                   Temperature_prediction>=13 & Temperature_prediction<=16 & Temperature_prediction+Prediction>16 ~ "13-16 at surface and >16 bottom", 
-                                   Temperature_prediction>16 & Temperature_prediction+Prediction<=16 ~ ">16 at surface but <=16 at bottom",
-                                   Temperature_prediction>16 & Temperature_prediction+Prediction>16 ~ ">16 at surface and bottom"))
-
+  mutate(Suitability_CHN=case_when(Temperature_prediction<20 & Temperature_prediction+Prediction<20 ~ "<20 at surface and bottom", # Create a variable for smelt suitability index
+                                   Temperature_prediction>=20 & Temperature_prediction+Prediction<20~ ">=20 at surface but <20 at bottom",
+                                   Temperature_prediction>=20 & Temperature_prediction+Prediction>=20 ~ ">=20 at surface and bottom"))
+ 
 summary(as.factor(chinooksalmon_data$Suitability_CHN))
 
 #Remove NAs
 chinooksalmon_data<-chinooksalmon_data[!is.na(chinooksalmon_data$Prediction),]
 
-chinooksalmon_data$Suitability_CHN<-factor(chinooksalmon_data$Suitability_CHN, levels = c( "13-16 at surface and bottom","13-16 at surface and >16 bottom", ">16 at surface but <=16 at bottom",">16 at surface and bottom"))
+unique(chinooksalmon_data$Suitability_CHN)
+chinooksalmon_data$Suitability_CHN<-factor(chinooksalmon_data$Suitability_CHN, levels = c( "<20 at surface and bottom", ">=20 at surface but <20 at bottom",">=20 at surface and bottom"))
 
 
-color_salmon <- c('#4363d8','#42d4f4','#f032e6','#e6194B')
+color_salmon <- c('#ffe119','#dcbeff','#e6194B','#f58231')
 
 
 #Photo of Chinook Salmon
@@ -351,7 +351,7 @@ pic_chinooksalmon <- readPNG(file.path(data_root, "CHN_edit.png"), native = TRUE
 plot_chinooksalmon <-ggplot(data=chinooksalmon_data)+
   geom_sf(aes(colour=Suitability_CHN),pch=15)+
   geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
-  scale_color_manual(values=color_salmon,labels = c(expression(""<="16"~degree * C *" at surface and bottom"), expression(""<="16"~degree * C *" at surface, but">"16"~degree * C * " at bottom"), expression(">16"~degree * C *" at surface, but"<="16"~degree * C * " at bottom"),expression(">16"~degree * C *" at surface and bottom")))+
+  scale_color_manual(values=color_smelt,labels = c(expression("<20"~degree * C *" at surface and bottom"), expression("">="20"~degree * C *" at surface, but <20"~degree * C * " at bottom"),expression("">="20"~degree * C *" at surface and bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
   #labs(title="Chinook Salmon Temperature Suitability")+
@@ -390,7 +390,7 @@ plot_chinooksalmon<- plot_chinooksalmon+
 #Print out smelt and salmon figure side by side
 tiff(filename=file.path(results_root,"Figure_Temperature_Suitability.tiff"), units="in",type="cairo", bg="white", height=8, 
      width=14, res=300, pointsize=10,compression="lzw")
-ggarrange(plot_deltasmelt, plot_chinooksalmon, ncol=2, nrow=1,labels = c("A - Delta Smelt (July 15th)", "B - Chinook Salmon (May 15th)"),hjust=-0.1)
+ggarrange(plot_chinooksalmon, plot_deltasmelt, ncol=2, nrow=1,labels = c("A - Critical temperature window for Chinook Salmon (June 15th)","B - Critical temperature window for Delta Smelt (July 15th)"),hjust=-0.1)
 dev.off()
 
 ######################################################################################################

@@ -213,6 +213,13 @@ model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp
 model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5)),
                                  data = temp_dataset, method="fREML", family=scat, cluster=cl)
 
+#########REMOVE the following from analysis
+#Space and season (julian day) and year model - to capture any interannual variability
+#model_03_thinspline_xy_jd_yr <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5), by=WaterYear)+WaterYear,
+#                                    data = temp_dataset, method="fREML", family=scat, cluster=cl)
+#Model takes awhile to run without parallel cores, save it as Rds so it doesn't have to be repeated every time
+#saveRDS(model_03_thinspline_xy_jd_yr, file.path(results_root,"Model_03_space_season_year.Rds"))
+
 #04
 #Space and season (julian day) and temperature anomaly (based on either interannual variability or time of day difference)
 time1_conventional_model <- Sys.time() #Calculate how long it takes to run model
@@ -246,6 +253,7 @@ dev.off()
 
 #######For skipping soap-film smoother model step
 #Read saved model here
+#model_03_thinspline_xy_jd_yr<-readRDS(file.path(results_root,"Model_03_space_season_year.Rds"))
 model_04_thinspline_xy_jd_ta<-readRDS(file.path(results_root,"Model_04_thinspline.Rds"))
 model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_05_soapfilm.Rds"))
 
@@ -309,9 +317,26 @@ for(i in 2){
   }
 }
 
-########## MODEL 04
+
+########## MODEL 03
 
 for(i in 3){
+  for(j in 1:k){
+    train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
+    validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
+    
+    new_model <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5), by=WaterYear)+WaterYear,
+                     data = temp_dataset, method="fREML", family=scat, cluster=cl)
+    newpred <- predict(new_model,newdata=validation) #Get the predictions for the validation set (from the model just fit on the train data)
+    
+    Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ]$holdoutpred <- newpred #Put the hold out prediction in the data set for later use
+    message(paste0("Finished run ", j, "/",k))
+  }
+}
+
+########## MODEL 04
+
+for(i in 4){
   for(j in 1:k){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
@@ -327,7 +352,7 @@ for(i in 3){
 
 ########## MODEL 05 - Soap-film smoother, final model
 
-for(i in 4){
+for(i in 5){
   for(j in 1:k){
     train <- Cross_Validation_Results[[i]][folds$subsets[folds$which != j], ] #Set the training set
     validation <-Cross_Validation_Results[[i]][folds$subsets[folds$which == j], ] #Set the validation set
@@ -363,7 +388,7 @@ for(i in 1:N_model){
 
 #To calculate how long it takes to run cross-validation
 time2_cross_validation <- Sys.time() 
-time2_cross_validation-time1_cross_validation
+time1_cross_validation-time2_cross_validation
 
 #Save cross validation results
 saveRDS(Cross_Validation_Results, file="Cross_Validation_Results.Rds")
