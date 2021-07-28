@@ -46,7 +46,7 @@ contin_temp_dataset_subset$WaterCol<-as.factor(contin_temp_dataset_subset$WaterC
 
 #Calculate percent of time temperature was suitable for Delta Smelt and Chinook Salmon
 contin_temp_dataset_percent<- contin_temp_dataset_subset %>% mutate(PercentSuitable_DeltaSmelt=ifelse(Temp<25,1,0),PercentSuitable_ChinookSalmon=ifelse(Temp<20,1,0)) %>%
-  group_by(Station,Date,Year,WaterCol) %>% summarise(PercentSuitable_ChinookSalmon=mean(PercentSuitable_ChinookSalmon),PercentSuitable_DeltaSmelt=mean(PercentSuitable_ChinookSalmon))
+  group_by(Station,Date,Year,WaterCol) %>% summarise(PercentSuitable_ChinookSalmon=mean(PercentSuitable_ChinookSalmon),PercentSuitable_DeltaSmelt=mean(PercentSuitable_DeltaSmelt))
 
 #Remove middle
 contin_temp_dataset_percent<-contin_temp_dataset_percent %>% filter(WaterCol %in% c("Surface", "Bottom"))
@@ -74,13 +74,13 @@ plot_habitat_chinooksalmon <-ggplot2::ggplot(contin_temp_dataset_percent,aes(y=W
   ggplot2::facet_grid(Station~.)+
   ggplot2::guides(fill = guide_legend(title = "Proportion of time\n temperature was\n <20 C"))+
   ggplot2::labs(y = "Chinook Salmon")+
-  ggplot2::theme(plot.title=element_text(size=9), 
-                 axis.text.x=element_text(size=9, color="black"), 
-                 axis.text.y = element_text(size=8, color="black",angle=45), 
+  ggplot2::theme(plot.title=element_text(size=11), 
+                 axis.text.x=element_text(size=11, color="black"), 
+                 axis.text.y = element_text(size=10, color="black",angle=45), 
                  axis.title.x = element_blank(), 
-                 axis.title.y = element_text(size=12, color="black"),
-                 strip.text = element_text(size = 9),
-                 legend.text=element_text(size = 9),
+                 axis.title.y = element_text(size=14, color="black"),
+                 strip.text = element_text(size = 11),
+                 legend.text=element_text(size = 11),
                  strip.background = element_rect(size=0.3)) 
 plot_habitat_chinooksalmon
 
