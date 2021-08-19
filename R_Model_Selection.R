@@ -213,20 +213,21 @@ model_01_thinspline_xy <- bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp
 model_02_thinspline_xy_jd <- bam(Temperature_difference ~  te(x,y,Julian_day_s, d=c(2,1), bs=c("tp","cc"), k=c(k_spatial_comp,5)),
                                  data = temp_dataset, method="fREML", family=scat, cluster=cl)
 
-#04
+#03
 #Space and season (julian day) and temperature anomaly (based on either interannual variability or time of day difference)
 time1_conventional_model <- Sys.time() #Calculate how long it takes to run model
-model_04_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(k_spatial_comp,5,k_temp_anomaly)),
+model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("tp","cc", "tp"), k=c(k_spatial_comp,5,k_temp_anomaly)),
                                     data = temp_dataset, method="fREML", family=scat, cluster=cl)
 
 time2_conventional_model <- Sys.time() #Calculate how long it takes to run model
 time2_conventional_model-time1_conventional_model
-saveRDS(model_04_thinspline_xy_jd_ta, file.path(results_root,"Model_04_thinspline.Rds"))
+saveRDS(model_03_thinspline_xy_jd_ta, file.path(results_root,"Model_03_thinspline.Rds"))
+#Roughly 6 minutes on 8/19/21
 
-#05
+#04
 #Space and season (julian day) and temperature anomaly + soap-film smoother to minimize bleedover from Suisun Marsh and Cache Slough Complex
 time1_final_model <- Sys.time() #Calculate how long it takes to run model
-model_05_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(k_spatial_comp,5,k_temp_anomaly),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
+model_04_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sf", "cc","tp"), k=c(k_spatial_comp,5,k_temp_anomaly),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL))+
                                     te(x, y, Julian_day_s,Temperature_anomaly_spatial, d=c(2,1,1), bs=c("sw","cc","tp"), k=c(k_spatial_comp,5,k_temp_anomaly),xt = list(list(bnd = border.aut,nmax=500),NULL,NULL)),
                                   data = temp_dataset, method="fREML", knots = knots_grid, family=scat, cluster=cl)
 time2_final_model <- Sys.time()
@@ -234,20 +235,20 @@ time2_final_model-time1_final_model
 
 #Generally ~13 mins at desktop, ~4 hours at work laptop (7/19/21)
 #Model takes awhile to run, save it as Rds so it doesn't have to be repeated every time
-saveRDS(model_05_soapfilm_xy_jd_ta, file.path(results_root,"Model_05_soapfilm.Rds"))
+saveRDS(model_04_soapfilm_xy_jd_ta, file.path(results_root,"Model_04_soapfilm.Rds"))
 
 #Print out model diagnostics plot for best model
 png(filename=file.path(results_root,"Model_diagnostics_scat.png"), units="in",type="cairo", bg="white", height=15, 
     width=15, res=300, pointsize=20)
 par(mfrow=c(2,2)) 
-gam.check(model_05_soapfilm_xy_jd_ta)
+gam.check(model_04_soapfilm_xy_jd_ta)
 dev.off()
 
 
 #######For skipping soap-film smoother model step
 #Read saved model here
-model_04_thinspline_xy_jd_ta<-readRDS(file.path(results_root,"Model_04_thinspline.Rds"))
-model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_05_soapfilm.Rds"))
+model_03_thinspline_xy_jd_ta<-readRDS(file.path(results_root,"Model_03_thinspline.Rds"))
+model_04_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_04_soapfilm.Rds"))
 
 
 ######################################################################################################
@@ -262,7 +263,7 @@ time1_cross_validation <- Sys.time() #To calculate how long it takes to run cros
 temp_dataset$geometry<-NULL
 
 #Number of models to be tested
-N_model<-5
+N_model<-4
 
 #with K=10
 k <- 10 #the number of folds
@@ -309,7 +310,7 @@ for(i in 2){
   }
 }
 
-########## MODEL 04
+########## MODEL 03
 
 for(i in 3){
   for(j in 1:k){
@@ -325,7 +326,7 @@ for(i in 3){
   }
 }
 
-########## MODEL 05 - Soap-film smoother, final model
+########## MODEL 04 - Soap-film smoother, final model
 
 for(i in 4){
   for(j in 1:k){
@@ -368,6 +369,7 @@ time2_cross_validation-time1_cross_validation
 #Save cross validation results
 saveRDS(Cross_Validation_Results, file="Cross_Validation_Results.Rds")
 
+#Roughly 1.2 hours for cross validation on 8/19/21
 ###########Start here to skip long cross-validation process
 
 #Read saved cross validation results
@@ -402,16 +404,14 @@ for(i in 1:N_model){
 #Add R squared to table
 Model_Selection_Summary$Rsquared[1]<- summary(model_01_thinspline_xy)$r.sq
 Model_Selection_Summary$Rsquared[2]<- summary(model_02_thinspline_xy_jd)$r.sq
-Model_Selection_Summary$Rsquared[3]<- summary(model_03_thinspline_xy_jd_yr)$r.sq
-Model_Selection_Summary$Rsquared[4]<- summary(model_04_thinspline_xy_jd_ta)$r.sq
-Model_Selection_Summary$Rsquared[5]<- summary(model_05_soapfilm_xy_jd_ta)$r.sq
+Model_Selection_Summary$Rsquared[3]<- summary(model_03_thinspline_xy_jd_ta)$r.sq
+Model_Selection_Summary$Rsquared[4]<- summary(model_04_soapfilm_xy_jd_ta)$r.sq
 
 #Add R squared to table
 Model_Selection_Summary$AICc[1]<- AICc(model_01_thinspline_xy)
 Model_Selection_Summary$AICc[2]<- AICc(model_02_thinspline_xy_jd)
-Model_Selection_Summary$AICc[3]<- AICc(model_03_thinspline_xy_jd_yr)
-Model_Selection_Summary$AICc[4]<- AICc(model_04_thinspline_xy_jd_ta)
-Model_Selection_Summary$AICc[5]<- AICc(model_05_soapfilm_xy_jd_ta)
+Model_Selection_Summary$AICc[3]<- AICc(model_03_thinspline_xy_jd_ta)
+Model_Selection_Summary$AICc[4]<- AICc(model_04_soapfilm_xy_jd_ta)
 
 write.csv(Model_Selection_Summary,file.path(results_root,paste("Model_Selection_Results",Sys.Date(),".csv",sep="")),row.names = F)
 
