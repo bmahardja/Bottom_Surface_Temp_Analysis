@@ -40,23 +40,23 @@ model_k_spatial <-list( )
 
 #Start from k=10 and increase by 5 until 50
 model_k_spatial[[1]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(10)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[2]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(15)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[3]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(20)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[4]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(25)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[5]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(30)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[6]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(35)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[7]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(40)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[8]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(45)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_spatial[[9]]<-bam(Temperature_difference ~  te(x,y, d=c(2), bs=c("tp"), k=c(50)),
-                  data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                  data = temp_dataset, method="fREML", family=scat,cluster=3)
 
 
 #Extract adjusted R squared changes
@@ -125,21 +125,21 @@ k_spatial_comp<-20
 model_k_temp_anomaly <-list( )
 
 model_k_temp_anomaly[[1]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,3)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[2]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,4)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[3]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,5)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[4]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,6)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[5]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,7)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[6]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,8)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[7]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,9)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 model_k_temp_anomaly[[8]]<-bam(Temperature_difference ~  te(x,y,Temperature_anomaly_spatial, d=c(2,1), bs=c("tp","tp"), k=c(k_spatial_comp,10)),
-                               data = temp_dataset, method="fREML", family=scat,cluster=cl)
+                               data = temp_dataset, method="fREML", family=scat,cluster=3)
 
 #Extract adjusted R squared changes
 k_test_results_Rsq <- vector("numeric", length(model_k_temp_anomaly))

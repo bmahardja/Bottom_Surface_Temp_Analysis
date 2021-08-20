@@ -41,7 +41,7 @@ crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
 ######################################################################################################
 
 #Read saved model results
-model_05_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_05_soapfilm.Rds"))
+model_04_soapfilm_xy_jd_ta<-readRDS(file.path(results_root,"Model_04_soapfilm.Rds"))
 
 temperature_anomaly_GAM_spatial<-readRDS(file.path(results_root,"Temperature_anomaly_spatial_GAM.Rds"))
 
@@ -49,7 +49,7 @@ temperature_anomaly_GAM_spatial<-readRDS(file.path(results_root,"Temperature_ano
 temp_dataset$geometry<-NULL
 
 #Create prediction column (not sure if necessary)
-temp_dataset$Temperature_difference_prediction<-as.vector(predict(model_05_soapfilm_xy_jd_ta, newdata=temp_dataset, type="response", se.fit=F, n.threads=3))
+temp_dataset$Temperature_difference_prediction<-as.vector(predict(model_04_soapfilm_xy_jd_ta, newdata=temp_dataset, type="response", se.fit=F, n.threads=3))
 
 hist(temp_dataset$Temperature_anomaly_spatial)
 
