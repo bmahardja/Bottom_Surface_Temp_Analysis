@@ -20,6 +20,8 @@ data_root<-file.path("data-raw")
 results_root<-file.path("results")
 
 ###############################
+##Main Map Figure
+###############################
 
 #Read Delta subregions
 Delta<-st_read(file.path(data_root,"Delta subregions","EDSM_Subregions_03302020.shp"))
@@ -175,6 +177,45 @@ tiff(filename=file.path(results_root,"Figure01_Map.tiff"), units="in",type="cair
 fig1
 dev.off()
 
+
+
+###############################
+##Supplementary Information - Map for soap-film smoother and knots
+###############################
+
+#Border outline for soap-film smoother
+#Read in bay-Delta shape outline shape file that Mike Beakes created
+Delta.aut <- st_read(file.path(data_root,"Bay_Delta_Poly_Outline3_UTM10", "Bay_Delta_Poly_Outline_NoSSC_UTM10.shp"))
+
+#Add knots
+knots_grid <- read.csv("knots_grid.csv")
+knots_grid_sf<-st_as_sf(knots_grid, coords=c("x","y"), crs=st_crs(Water), remove=F)
+
+#Create the map
+fig_sup<-ggplot() + theme_bw()+
+  geom_sf(data = Water, fill="cadetblue1", color="cadetblue1") +
+  geom_sf(data=knots_grid_sf,shape=19, size=2,color="red")+
+  geom_sf(data=Delta.aut,fill=NA)+
+  coord_sf(xlim = c(-122.2, -121.20), ylim = c(37.65, 38.61),crs=crsLONGLAT)  +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         pad_y = unit(1.0, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  annotation_scale(location = "tr", width_hint = 0.5)+
+  #annotate(geom = "point", x = -121.81, y = 37.7, colour = "black", fill="red", size = 2.2,shape=24) + 
+  #annotate(geom = "text", x = -122.22, y = 37.85, label="San Francisco Bay",size=3.5,hjust="left") + 
+  geom_segment(data=tibble(x=-122.22, y=37.85, xend=-122.3, yend=37.85), aes(x=x, y=y, xend=xend, yend=yend), arrow=arrow(length = unit(0.01, "npc")), size=0.5)+
+  theme(legend.position = c(0.1,0.9),legend.box.background = element_rect(colour = "black"),
+        axis.text.x = element_text(size=12, color="black"),axis.text.y = element_text(size=12, color="black"),
+        axis.title.x=element_blank(),axis.title.y=element_blank()
+  )+
+  guides(colour=guide_colourbar(ticks.colour = "black"))
+
+
+#Print out the map
+tiff(filename=file.path(results_root,"FigureSupplementary_BoundaryKnotMap.tiff"), units="in",type="cairo", bg="white", height=10, 
+     width=8, res=300, compression="lzw")
+fig_sup
+dev.off()
 
 
 

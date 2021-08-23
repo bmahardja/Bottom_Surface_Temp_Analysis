@@ -240,14 +240,75 @@ plot_fall_results<-model_results_plot(Season_set = "Fall")
 
 plot_results_full<-ggarrange(plot_winter_results, plot_spring_results, plot_summer_results, plot_fall_results, ncol=1, nrow=4, align = "hv",legend="right")
 
-#Print out figure
+#####################################################################################
+#Print out main results figure
 tiff(filename=file.path(results_root,"Model_full_results.tiff"), units="in",type="cairo", bg="white", height=15, 
     width=20, res=300, pointsize=10,compression="lzw")
-ggarrange(plot_surface_full, plot_results_full, ncol=2, nrow=1)
+ggarrange(annotate_figure(plot_surface_full, top = text_grob("A) Surface temperature", face = "bold", size = 20)), 
+          annotate_figure(plot_results_full, top = text_grob("B) Temperature difference from surface", face = "bold", size = 20)), 
+          ncol=2, nrow=1)
 dev.off()
 
 
 
+######################################################################################################
+################# Temperature plot (significant only) ############
+######################################################################################################
+
+#Reconfigure the data set
+newdata_edit<-newdata%>%
+  mutate(L99=Prediction-SE*2.576,
+         U99=Prediction+SE*2.576)
+#1.96 for 95% confidence interval,2.576 for 99%, 3.291 for 99.9%
+
+##################################################
+#Add significance at 95%
+
+newdata_edit$significance<-ifelse(sign(newdata_edit$L99)==sign(newdata_edit$U99),1,0)
+#add column sign (whether it's +/-)
+newdata_edit$sign<-sign(newdata_edit$L95)
+
+#Remove NAs
+newdata_edit<-newdata_edit[!is.na(newdata_edit$Prediction),]
+
+##################################################
+#Create figure for model results
+
+model_results_significance_plot<-function(Full_data=newdata_edit,
+                                          Season_set="Winter",Season_name="Winter (Jan 15)"
+){
+  newplot<-ggplot()+
+    geom_sf(data=(Full_data %>% filter(Season==Season_set,significance==0)),colour="white",pch=15,alpha=0.8)+
+    geom_sf(data=(Full_data %>% filter(Season==Season_set,significance==1,sign==-1)),colour="blue",pch=15,alpha=0.8)+
+    geom_sf(data=(Full_data %>% filter(Season==Season_set,significance==1,sign==1)),colour="red",pch=15,alpha=0.8)+
+    theme_dark()+
+    facet_grid(~Temperature_anomaly_category)+
+    theme(axis.text.x = element_blank(), 
+          axis.text.y = element_blank(), 
+          axis.ticks = element_blank(),
+          axis.title.x = element_text(size = 22, angle = 00), 
+          axis.title.y = element_text(size = 22, angle = 90),
+          strip.text = element_text(size = 20),
+          legend.text = element_text(size=18),
+          legend.key.size = unit(1.5, 'cm'),
+          plot.title = element_text(size=22)
+    )+    
+    labs(y=Season_name,colour=NULL)
+  return(newplot)
+}
+
+plot_summer_sig_results<-model_results_significance_plot(Season_set = "Summer",Season_name="Summer (Jul 15)")
+plot_winter_sig_results<-model_results_significance_plot(Season_set = "Winter",Season_name="Winter (Jan 15)")
+plot_spring_sig_results<-model_results_significance_plot(Season_set = "Spring",Season_name="Spring (Apr 15)")
+plot_fall_sig_results<-model_results_significance_plot(Season_set = "Fall",Season_name="Fall (Oct 15)")
+
+plot_results_significant_full<-ggarrange(plot_spring_sig_results, plot_summer_sig_results, plot_fall_sig_results, plot_winter_sig_results, ncol=1, nrow=4)
+
+#Print out figure
+tiff(filename=file.path(results_root,"Model_results_significant.tiff"), units="in",type="cairo", bg="white", height=18, 
+     width=10, res=500, pointsize=20)
+annotate_figure(plot_results_significant_full, top = text_grob("Temperature difference from surface at p<0.01\n Blue:Cooler than surface \nRed:Warmer than surface", size = 20)) 
+dev.off()
 
 ######################################################################################################
 ################# Suitability of Delta Smelt ############
@@ -401,7 +462,7 @@ dev.off()
 newdata_12_months <- WQ_pred_grid(Julian_days_range=yday(ymd(paste("2001", c(1:12), "15", sep="-"))))
 
 #Add prediction from model
-model_predictions_12_months<-predict(model_05_soapfilm_xy_jd_ta, newdata=newdata_12_months, type="response",discrete=F, se.fit=TRUE) # Create predictions
+model_predictions_12_months<-predict(model_04_soapfilm_xy_jd_ta, newdata=newdata_12_months, type="response",discrete=F, se.fit=TRUE) # Create predictions
 
 #Reconfigure the data set
 newdata_12_months<-newdata_12_months%>%
@@ -429,11 +490,11 @@ unique(newdata_12_months$Month)
 
 #Create function to create ggplot for surface temperature
 temperature_plot<-function(Full_data=newdata_12_months,
-                           Month_set="January"
+                           Month_set="January",Month_name="January 15"
 ){
   newplot<-ggplot(data=(Full_data %>% filter(Month==Month_set)))+
     geom_sf(aes(colour=Temperature_prediction),pch=15)+
-    scale_colour_gradient(low = "yellow",high = "red")+
+    scale_colour_gradient(low = "yellow",high = "red",name=expression(""~degree * C *""))+
     theme_dark()+
     theme(axis.text.x = element_blank(), 
           axis.text.y = element_blank(), 
@@ -447,34 +508,35 @@ temperature_plot<-function(Full_data=newdata_12_months,
     )+
     guides(colour=guide_colourbar(ticks.colour = "black"))+
     facet_grid(~Temperature_anomaly_category)+
-    labs(y=Month_set,colour=NULL)
+    labs(y=Month_name,colour=NULL)
   return(newplot)
 }
 
 #Create surface temp plots for each month
-plot_surface_01<-temperature_plot(Month_set = "January")
-plot_surface_02<-temperature_plot(Month_set = "February")
-plot_surface_03<-temperature_plot(Month_set = "March")
-plot_surface_04<-temperature_plot(Month_set = "April")
-plot_surface_05<-temperature_plot(Month_set = "May")
-plot_surface_06<-temperature_plot(Month_set = "June")
-plot_surface_07<-temperature_plot(Month_set = "July")
-plot_surface_08<-temperature_plot(Month_set = "August")
-plot_surface_09<-temperature_plot(Month_set = "September")
-plot_surface_10<-temperature_plot(Month_set = "October")
-plot_surface_11<-temperature_plot(Month_set = "November")
-plot_surface_12<-temperature_plot(Month_set = "December")
+plot_surface_01<-temperature_plot(Month_set = "January",Month_name = "January 15")
+plot_surface_02<-temperature_plot(Month_set = "February",Month_name = "February 15")
+plot_surface_03<-temperature_plot(Month_set = "March",Month_name = "March 15")
+plot_surface_04<-temperature_plot(Month_set = "April",Month_name = "April 15")
+plot_surface_05<-temperature_plot(Month_set = "May",Month_name = "May 15")
+plot_surface_06<-temperature_plot(Month_set = "June",Month_name = "June 15")
+plot_surface_07<-temperature_plot(Month_set = "July",Month_name = "July 15")
+plot_surface_08<-temperature_plot(Month_set = "August",Month_name = "August 15")
+plot_surface_09<-temperature_plot(Month_set = "September",Month_name = "September 15")
+plot_surface_10<-temperature_plot(Month_set = "October",Month_name = "October 15")
+plot_surface_11<-temperature_plot(Month_set = "November",Month_name = "November 15")
+plot_surface_12<-temperature_plot(Month_set = "December",Month_name = "December 15")
 
 #Add title
-plot_surface_01<-plot_surface_01+labs(title="Surface temperature")
+plot_surface_01<-plot_surface_01+labs(title="A) Surface temperature")
 
 #Create function to create ggplot for model results based on month
 model_results_plot<-function(Full_data=newdata_12_months,
-                             Month_set="January"
+                             Month_set="January",Month_name="January 15"
 ){
   newplot<-ggplot(data=(Full_data %>% filter(Month==Month_set)))+
     geom_sf(aes(colour=Prediction),pch=15)+
-    scale_colour_gradient2(limits=c(-3.5,0.5),low = "blue",high = "red",midpoint = 0)+
+    #scale_colour_gradient2(limits=c(-3.5,0.5),low = "blue",high = "red",midpoint = 0)+
+    scale_colour_viridis_c(name=expression(""~degree * C *""))+
     theme_dark()+
     facet_grid(~Temperature_anomaly_category)+
     theme(axis.text.x = element_blank(), 
@@ -487,26 +549,26 @@ model_results_plot<-function(Full_data=newdata_12_months,
           legend.key.size = unit(1.5, 'cm'),
           plot.title = element_text(size=22)
     )+
-    labs(y=Month_set,colour=NULL)
+    labs(y=Month_name,colour=NULL)
   return(newplot)
 }
 
 #Create prediction plots for each month
-plot_results_01<-model_results_plot(Month_set = "January")
-plot_results_02<-model_results_plot(Month_set = "February")
-plot_results_03<-model_results_plot(Month_set = "March")
-plot_results_04<-model_results_plot(Month_set = "April")
-plot_results_05<-model_results_plot(Month_set = "May")
-plot_results_06<-model_results_plot(Month_set = "June")
-plot_results_07<-model_results_plot(Month_set = "July")
-plot_results_08<-model_results_plot(Month_set = "August")
-plot_results_09<-model_results_plot(Month_set = "September")
-plot_results_10<-model_results_plot(Month_set = "October")
-plot_results_11<-model_results_plot(Month_set = "November")
-plot_results_12<-model_results_plot(Month_set = "December")
+plot_results_01<-model_results_plot(Month_set = "January",Month_name = "January 15")
+plot_results_02<-model_results_plot(Month_set = "February",Month_name = "February 15")
+plot_results_03<-model_results_plot(Month_set = "March",Month_name = "March 15")
+plot_results_04<-model_results_plot(Month_set = "April",Month_name = "April 15")
+plot_results_05<-model_results_plot(Month_set = "May",Month_name = "May 15")
+plot_results_06<-model_results_plot(Month_set = "June",Month_name = "June 15")
+plot_results_07<-model_results_plot(Month_set = "July",Month_name = "July 15")
+plot_results_08<-model_results_plot(Month_set = "August",Month_name = "August 15")
+plot_results_09<-model_results_plot(Month_set = "September",Month_name = "September 15")
+plot_results_10<-model_results_plot(Month_set = "October",Month_name = "October 15")
+plot_results_11<-model_results_plot(Month_set = "November",Month_name = "November 15")
+plot_results_12<-model_results_plot(Month_set = "December",Month_name = "December 15")
 
 #Add title
-plot_results_01<-plot_results_01+labs(title="Bottom temperature difference from surface")
+plot_results_01<-plot_results_01+labs(title="B) Temperature difference from surface")
 
 #Print out Jan-April figure
 png(filename=file.path(results_root,"Model_full_results_01-04.png"), units="in",type="cairo", bg="white", height=18, 
@@ -525,3 +587,11 @@ png(filename=file.path(results_root,"Model_full_results_09-12.png"), units="in",
     width=20, res=300, pointsize=20)
 ggarrange(ggarrange(plot_surface_09, plot_surface_10, plot_surface_11, plot_surface_12, ncol=1, nrow=4), ggarrange(plot_results_09, plot_results_10, plot_results_11, plot_results_12, ncol=1, nrow=4), ncol=2, nrow=1)
 dev.off()
+
+
+################################
+####Summarize monthly predictions to see lowest and highest temperature months
+
+monthly_summary<-newdata_12_months %>% filter(Temperature_anomaly_category==0) %>% group_by(Month) %>% summarise(average_temp=mean(Temperature_prediction))
+
+monthly_summary<-temp_dataset %>% group_by(Month_fac) %>% summarise(average_temp=mean(Temperature))
