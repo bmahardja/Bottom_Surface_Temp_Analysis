@@ -181,6 +181,11 @@ points(Data_subset_post_2011_inside$x,Data_subset_post_2011_inside$y, pch=21, bg
 points(Data_subset_post_2011_outside$x,Data_subset_post_2011_outside$y, pch=21, bg="red")
 # Only 1 point is outside the boundary, EMP site that's somehow located on land
 
+#IMPORTANT: Redo the julian_day_s calculation because now we have just a subset of the data
+Data_subset_post_2011_inside$Julian_day_s<-(Data_subset_post_2011_inside$Julian_day-mean(Data_subset_post_2011_inside$Julian_day, na.rm=T))/sd(Data_subset_post_2011_inside$Julian_day, na.rm=T)
+hist(Data_subset_post_2011_inside$Julian_day_s)
+hist(Data_subset_post_2011_inside$Julian_day)
+
 ###################################################
 ################# Set up knots ############
 ###################################################
@@ -246,15 +251,15 @@ plot(temperature_anomaly_GAM)
 
 
 ## Construct temperature anomaly model with longitude and latitude on top of julian day
-temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(10,5)),data=Data_subset_post_2011_inside)
+temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(15,5)),data=Data_subset_post_2011_inside)
 summary(temperature_anomaly_GAM_spatial)
-# R-sq.(adj) =  0.907   Deviance explained = 90.7%
+# R-sq.(adj) =  0.909   Deviance explained = 90.9%
 
 #gam.check(temperature_anomaly_GAM_spatial)
 
-# K index is low at 0.52, and edf is pretty close to k', but the goal was to remove collinearity, not fit
+# K index is low at 0.51, and edf is pretty close to k', but the goal was to remove collinearity, not fit
 # k'  edf k-index p-value    
-# 39.0 35.8    0.52  <2e-16 ***
+# 59.0 55.2    0.51  <2e-16 ***
 
 #Add temperature anomaly term to the dataset
 Data_subset_post_2011_inside$Temperature_prediction_spatial <-predict(temperature_anomaly_GAM_spatial,Data_subset_post_2011_inside)
