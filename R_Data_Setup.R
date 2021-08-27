@@ -251,7 +251,7 @@ plot(temperature_anomaly_GAM)
 
 
 ## Construct temperature anomaly model with longitude and latitude on top of julian day
-temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(15,5)),data=Data_subset_post_2011_inside)
+temperature_anomaly_GAM_spatial<- gam(Temperature ~ te(x,y,Julian_day_s, d=c(2,1) ,bs=c("tp","cc"),k=c(10,5)),data=Data_subset_post_2011_inside)
 summary(temperature_anomaly_GAM_spatial)
 # R-sq.(adj) =  0.909   Deviance explained = 90.9%
 

@@ -132,10 +132,10 @@ WQ_pred_grid<-function(Full_data=temp_dataset,
 newdata <- WQ_pred_grid()
 
 #Add prediction from model
-#model_predictions<-predict(model_05_soapfilm_xy_jd_ta, newdata=newdata, type="response",discrete=F, se.fit=TRUE) # Create predictions
+model_predictions<-predict(model_04_soapfilm_xy_jd_ta, newdata=newdata, type="response",discrete=F, se.fit=TRUE) # Create predictions
 
 #Save model prediction results for later use
-#saveRDS(model_predictions, file.path(results_root,"Model_Predictions_for_Figures.Rds"))
+saveRDS(model_predictions, file.path(results_root,"Model_Predictions_for_Figures.Rds"))
 
 #Load model predictions for faster script run
 model_predictions<-readRDS(file.path(results_root,"Model_Predictions_for_Figures.Rds"))
@@ -306,7 +306,7 @@ plot_results_significant_full<-ggarrange(plot_spring_sig_results, plot_summer_si
 
 #Print out figure
 tiff(filename=file.path(results_root,"Model_results_significant.tiff"), units="in",type="cairo", bg="white", height=18, 
-     width=10, res=500, pointsize=20)
+     width=10, res=500, pointsize=20,compression="lzw")
 annotate_figure(plot_results_significant_full, top = text_grob("Temperature difference from surface at p<0.01\n Blue:Cooler than surface \nRed:Warmer than surface", size = 20)) 
 dev.off()
 
@@ -315,6 +315,8 @@ dev.off()
 ######################################################################################################
 
 #Extract july dataset from previous code/figure
+newdata_edit$Temperature_prediction=predict(temperature_anomaly_GAM_spatial,newdata_edit)
+  
 deltasmelt_data<-newdata_edit %>% filter(Season == "Summer",Temperature_anomaly_spatial==0) %>% 
   mutate(Suitability_DSM=case_when(Temperature_prediction<20 ~ "<20 at surface", # Create a variable for smelt suitability index
                                    Temperature_prediction>=20 & Temperature_prediction<=25 ~ "20-25 at surface",
@@ -376,10 +378,9 @@ plot_deltasmelt <- plot_deltasmelt+
 ################# Suitability of juvenile Chinook Salmon ############
 ######################################################################################################
 
-#See Myrick and Cech 2004
 
-chinooksalmon_data <- WQ_pred_grid(Julian_days_range=yday(ymd(paste("2001", "06", "15", sep="-")))) 
-chinooksalmon_predictions <- predict(model_05_soapfilm_xy_jd_ta, newdata=chinooksalmon_data, type="response",discrete=F, se.fit=TRUE)
+chinooksalmon_data <- WQ_pred_grid(Julian_days_range=yday(ymd(paste("2001", "05", "15", sep="-")))) 
+chinooksalmon_predictions <- predict(model_04_soapfilm_xy_jd_ta, newdata=chinooksalmon_data, type="response",discrete=F, se.fit=TRUE)
 
 chinooksalmon_data$Temperature_prediction=predict(temperature_anomaly_GAM_spatial,chinooksalmon_data)
 
@@ -451,7 +452,7 @@ plot_chinooksalmon<- plot_chinooksalmon+
 #Print out smelt and salmon figure side by side
 tiff(filename=file.path(results_root,"Figure_Temperature_Suitability.tiff"), units="in",type="cairo", bg="white", height=8, 
      width=14, res=300, pointsize=10,compression="lzw")
-ggarrange(plot_chinooksalmon, plot_deltasmelt, ncol=2, nrow=1,labels = c("A - Critical temperature window for Chinook Salmon (June 15th)","B - Critical temperature window for Delta Smelt (July 15th)"),hjust=-0.1)
+ggarrange(plot_chinooksalmon, plot_deltasmelt, ncol=2, nrow=1,labels = c("A - Critical temperature window for Chinook Salmon (May 15th)","B - Critical temperature window for Delta Smelt (July 15th)"),hjust=-0.1)
 dev.off()
 
 ######################################################################################################
@@ -546,6 +547,7 @@ model_results_plot<-function(Full_data=newdata_12_months,
           axis.title.y = element_text(size = 22, angle = 90),
           strip.text = element_text(size = 20),
           legend.text = element_text(size=18),
+          legend.title = element_text(size=16),
           legend.key.size = unit(1.5, 'cm'),
           plot.title = element_text(size=22)
     )+
@@ -594,4 +596,4 @@ dev.off()
 
 monthly_summary<-newdata_12_months %>% filter(Temperature_anomaly_category==0) %>% group_by(Month) %>% summarise(average_temp=mean(Temperature_prediction))
 
-monthly_summary<-temp_dataset %>% group_by(Month_fac) %>% summarise(average_temp=mean(Temperature))
+monthly_summary_raw<-temp_dataset %>% group_by(Month_fac) %>% summarise(average_temp=mean(Temperature))

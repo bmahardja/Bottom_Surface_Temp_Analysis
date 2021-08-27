@@ -222,7 +222,7 @@ model_03_thinspline_xy_jd_ta <- bam(Temperature_difference ~  te(x,y,Julian_day_
 time2_conventional_model <- Sys.time() #Calculate how long it takes to run model
 time2_conventional_model-time1_conventional_model
 saveRDS(model_03_thinspline_xy_jd_ta, file.path(results_root,"Model_03_thinspline.Rds"))
-#Roughly 6 minutes on 8/19/21
+#Roughly 6 minutes on 8/27/21
 
 #04
 #Space and season (julian day) and temperature anomaly + soap-film smoother to minimize bleedover from Suisun Marsh and Cache Slough Complex
@@ -233,7 +233,7 @@ model_04_soapfilm_xy_jd_ta <- bam(Temperature_difference ~  te(x, y,Julian_day_s
 time2_final_model <- Sys.time()
 time2_final_model-time1_final_model
 
-#Generally ~13 mins at desktop, ~4 hours at work laptop (7/19/21)
+#Generally ~13 mins at desktop, ~3.7 hours at work laptop (8/27/21)
 #Model takes awhile to run, save it as Rds so it doesn't have to be repeated every time
 saveRDS(model_04_soapfilm_xy_jd_ta, file.path(results_root,"Model_04_soapfilm.Rds"))
 
