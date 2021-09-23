@@ -262,11 +262,11 @@ newdata_edit<-newdata%>%
 #1.96 for 95% confidence interval,2.576 for 99%, 3.291 for 99.9%
 
 ##################################################
-#Add significance at 95%
+#Add significance at 99%
 
 newdata_edit$significance<-ifelse(sign(newdata_edit$L99)==sign(newdata_edit$U99),1,0)
 #add column sign (whether it's +/-)
-newdata_edit$sign<-sign(newdata_edit$L95)
+newdata_edit$sign<-sign(newdata_edit$L99)
 
 #Remove NAs
 newdata_edit<-newdata_edit[!is.na(newdata_edit$Prediction),]
@@ -392,7 +392,8 @@ chinooksalmon_data<-chinooksalmon_data %>%
   filter(Temperature_anomaly_spatial==0) %>% 
   mutate(Suitability_CHN=case_when(Temperature_prediction<20 & Temperature_prediction+Prediction<20 ~ "<20 at surface and bottom", # Create a variable for smelt suitability index
                                    Temperature_prediction>=20 & Temperature_prediction+Prediction<20~ ">=20 at surface but <20 at bottom",
-                                   Temperature_prediction>=20 & Temperature_prediction+Prediction>=20 ~ ">=20 at surface and bottom"))
+                                   Temperature_prediction>=20 & Temperature_prediction+Prediction>=20 ~ ">=20 at surface and bottom",
+                                   Temperature_prediction<20 & Temperature_prediction+Prediction>=20~ "<20 at surface but >=20 at bottom"))
  
 summary(as.factor(chinooksalmon_data$Suitability_CHN))
 
@@ -400,7 +401,7 @@ summary(as.factor(chinooksalmon_data$Suitability_CHN))
 chinooksalmon_data<-chinooksalmon_data[!is.na(chinooksalmon_data$Prediction),]
 
 unique(chinooksalmon_data$Suitability_CHN)
-chinooksalmon_data$Suitability_CHN<-factor(chinooksalmon_data$Suitability_CHN, levels = c( "<20 at surface and bottom", ">=20 at surface but <20 at bottom",">=20 at surface and bottom"))
+chinooksalmon_data$Suitability_CHN<-factor(chinooksalmon_data$Suitability_CHN, levels = c( "<20 at surface and bottom", ">=20 at surface but <20 at bottom",">=20 at surface and bottom","<20 at surface but >=20 at bottom"))
 
 
 color_salmon <- c('#ffe119','#dcbeff','#e6194B','#f58231')
@@ -413,7 +414,8 @@ pic_chinooksalmon <- readPNG(file.path(data_root, "CHN_edit.png"), native = TRUE
 plot_chinooksalmon <-ggplot(data=chinooksalmon_data)+
   geom_sf(aes(colour=Suitability_CHN),pch=15)+
   geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
-  scale_color_manual(values=color_smelt,labels = c(expression("<20"~degree * C *" at surface and bottom"), expression("">="20"~degree * C *" at surface, but <20"~degree * C * " at bottom"),expression("">="20"~degree * C *" at surface and bottom")))+
+  scale_color_manual(values=color_salmon,labels = c(expression("<20"~degree * C *" at surface and bottom"), expression("">="20"~degree * C *" at surface, but <20"~degree * C * " at bottom"),
+                                                   expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at bottom, but " >= "20"~degree * C * " at bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
   #labs(title="Chinook Salmon Temperature Suitability")+
@@ -452,7 +454,7 @@ plot_chinooksalmon<- plot_chinooksalmon+
 #Print out smelt and salmon figure side by side
 tiff(filename=file.path(results_root,"Figure_Temperature_Suitability.tiff"), units="in",type="cairo", bg="white", height=8, 
      width=14, res=300, pointsize=10,compression="lzw")
-ggarrange(plot_chinooksalmon, plot_deltasmelt, ncol=2, nrow=1,labels = c("A - Critical temperature window for Chinook Salmon (May 15th)","B - Critical temperature window for Delta Smelt (July 15th)"),hjust=-0.1)
+ggarrange(plot_chinooksalmon, plot_deltasmelt, ncol=2, nrow=1,labels = c("A - Thermal landscape for Chinook Salmon (May 15th)","B - Thermal landscape for Delta Smelt (July 15th)"),hjust=-0.1)
 dev.off()
 
 ######################################################################################################
@@ -504,6 +506,7 @@ temperature_plot<-function(Full_data=newdata_12_months,
           axis.title.y = element_text(size = 22, angle = 90),
           strip.text = element_text(size = 20),
           legend.text = element_text(size=18),
+          legend.title = element_text(size=16),
           legend.key.size = unit(1.5, 'cm'),
           plot.title = element_text(size=22)
     )+
@@ -529,6 +532,8 @@ plot_surface_12<-temperature_plot(Month_set = "December",Month_name = "December 
 
 #Add title
 plot_surface_01<-plot_surface_01+labs(title="A) Surface temperature")
+plot_surface_05<-plot_surface_05+labs(title="A) Surface temperature")
+plot_surface_09<-plot_surface_09+labs(title="A) Surface temperature")
 
 #Create function to create ggplot for model results based on month
 model_results_plot<-function(Full_data=newdata_12_months,
@@ -544,7 +549,7 @@ model_results_plot<-function(Full_data=newdata_12_months,
           axis.text.y = element_blank(), 
           axis.ticks = element_blank(),
           axis.title.x = element_text(size = 22, angle = 00), 
-          axis.title.y = element_text(size = 22, angle = 90),
+          axis.title.y = element_blank(),
           strip.text = element_text(size = 20),
           legend.text = element_text(size=18),
           legend.title = element_text(size=16),
@@ -571,6 +576,8 @@ plot_results_12<-model_results_plot(Month_set = "December",Month_name = "Decembe
 
 #Add title
 plot_results_01<-plot_results_01+labs(title="B) Temperature difference from surface")
+plot_results_05<-plot_results_05+labs(title="B) Temperature difference from surface")
+plot_results_09<-plot_results_09+labs(title="B) Temperature difference from surface")
 
 #Print out Jan-April figure
 png(filename=file.path(results_root,"Model_full_results_01-04.png"), units="in",type="cairo", bg="white", height=18, 
@@ -589,6 +596,83 @@ png(filename=file.path(results_root,"Model_full_results_09-12.png"), units="in",
     width=20, res=300, pointsize=20)
 ggarrange(ggarrange(plot_surface_09, plot_surface_10, plot_surface_11, plot_surface_12, ncol=1, nrow=4), ggarrange(plot_results_09, plot_results_10, plot_results_11, plot_results_12, ncol=1, nrow=4), ncol=2, nrow=1)
 dev.off()
+
+
+######################################################################################################
+################# Figure for every month (12x3) for "statistically significant difference" ############
+######################################################################################################
+
+
+#Reconfigure the data set
+newdata_12_months<-newdata_12_months%>%
+  mutate(L99=Prediction-SE*2.576,
+         U99=Prediction+SE*2.576)
+#1.96 for 95% confidence interval,2.576 for 99%, 3.291 for 99.9%
+
+##################################################
+#Add significance at 99%
+
+newdata_12_months$significance<-ifelse(sign(newdata_12_months$L99)==sign(newdata_12_months$U99),1,0)
+#add column sign (whether it's +/-)
+newdata_12_months$sign<-sign(newdata_12_months$L99)
+
+##################################################
+#Create figure for model results
+model_results_significance_month_plot<-function(Full_data=newdata_12_months,
+                                          Month_set="January",Month_name="January 15"
+){
+  newplot<-ggplot()+
+    geom_sf(data=(Full_data %>% filter(Month==Month_set,significance==0)),colour="white",pch=15,alpha=0.8)+
+    geom_sf(data=(Full_data %>% filter(Month==Month_set,significance==1,sign==-1)),colour="blue",pch=15,alpha=0.8)+
+    geom_sf(data=(Full_data %>% filter(Month==Month_set,significance==1,sign==1)),colour="red",pch=15,alpha=0.8)+
+    theme_dark()+
+    facet_grid(~Temperature_anomaly_category)+
+    theme(axis.text.x = element_blank(), 
+          axis.text.y = element_blank(), 
+          axis.ticks = element_blank(),
+          axis.title.x = element_text(size = 22, angle = 00), 
+          axis.title.y = element_text(size = 22, angle = 90),
+          strip.text = element_text(size = 20),
+          legend.text = element_text(size=18),
+          legend.key.size = unit(1.5, 'cm'),
+          plot.title = element_text(size=22)
+    )+    
+    labs(y=Month_name,colour=NULL)
+  return(newplot)
+}
+
+plot_sig_results_01<-model_results_significance_month_plot(Month_set = "January",Month_name="January 15")
+plot_sig_results_02<-model_results_significance_month_plot(Month_set = "February",Month_name="February 15")
+plot_sig_results_03<-model_results_significance_month_plot(Month_set = "March",Month_name="March 15")
+plot_sig_results_04<-model_results_significance_month_plot(Month_set = "April",Month_name="April 15")
+plot_sig_results_05<-model_results_significance_month_plot(Month_set = "May",Month_name="May 15")
+plot_sig_results_06<-model_results_significance_month_plot(Month_set = "June",Month_name="June 15")
+plot_sig_results_07<-model_results_significance_month_plot(Month_set = "July",Month_name="July 15")
+plot_sig_results_08<-model_results_significance_month_plot(Month_set = "August",Month_name="August 15")
+plot_sig_results_09<-model_results_significance_month_plot(Month_set = "September",Month_name="September 15")
+plot_sig_results_10<-model_results_significance_month_plot(Month_set = "October",Month_name="October 15")
+plot_sig_results_11<-model_results_significance_month_plot(Month_set = "November",Month_name="November 15")
+plot_sig_results_12<-model_results_significance_month_plot(Month_set = "December",Month_name="December 15")
+
+
+#Print out Jan-April figure
+png(filename=file.path(results_root,"Model_significant_results_01-04.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=300, pointsize=20)
+ggarrange(plot_sig_results_01, plot_sig_results_02, plot_sig_results_03, plot_sig_results_04, ncol=1, nrow=4)
+dev.off()
+
+#Print out May-August figure
+png(filename=file.path(results_root,"Model_significant_results_05-08.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=300, pointsize=20)
+ggarrange(plot_sig_results_05, plot_sig_results_06, plot_sig_results_07, plot_sig_results_08, ncol=1, nrow=4)
+dev.off()
+
+#Print out Sep-December figure
+png(filename=file.path(results_root,"Model_significant_results_09-12.png"), units="in",type="cairo", bg="white", height=18, 
+    width=20, res=300, pointsize=20)
+ggarrange(plot_sig_results_09, plot_sig_results_10, plot_sig_results_11, plot_sig_results_12, ncol=1, nrow=4)
+dev.off()
+
 
 
 ################################
