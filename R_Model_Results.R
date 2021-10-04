@@ -302,7 +302,7 @@ plot_winter_sig_results<-model_results_significance_plot(Season_set = "Winter",S
 plot_spring_sig_results<-model_results_significance_plot(Season_set = "Spring",Season_name="Spring (Apr 15)")
 plot_fall_sig_results<-model_results_significance_plot(Season_set = "Fall",Season_name="Fall (Oct 15)")
 
-plot_results_significant_full<-ggarrange(plot_spring_sig_results, plot_summer_sig_results, plot_fall_sig_results, plot_winter_sig_results, ncol=1, nrow=4)
+plot_results_significant_full<-ggarrange(plot_winter_sig_results, plot_spring_sig_results, plot_summer_sig_results, plot_fall_sig_results, ncol=1, nrow=4)
 
 #Print out figure
 tiff(filename=file.path(results_root,"Model_results_significant.tiff"), units="in",type="cairo", bg="white", height=18, 
@@ -341,7 +341,7 @@ plot_deltasmelt <-ggplot(data=deltasmelt_data)+
   scale_color_manual(values=color_smelt,labels = c(expression("20-25"~degree * C *" at surface"), expression(">25"~degree * C *" at surface, but"<="25"~degree * C * " at bottom"),expression(">25"~degree * C *" at surface and bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
-  #labs(title="Delta Smelt Temperature Suitability")+
+  labs(title="B) Thermal landscape for Delta Smelt (July 15th) \n 2011-2019 average conditions")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
@@ -352,11 +352,11 @@ plot_deltasmelt <-ggplot(data=deltasmelt_data)+
         legend.text = element_text(size=9),
         #legend.key.size = unit(0.5, "lines"),
         #legend.key.width = unit(1.2,"lines"),
-        legend.position = c(0.2, 0.1),
+        legend.position = c(0.22, 0.1),
         legend.margin = margin(0.2, 0.2, 0.2, 0.2, "cm"), 
         legend.background = element_rect(fill = "white",color="black"),
         legend.title = element_blank(),
-        plot.title = element_text(size=8, hjust=0.5)
+        plot.title = element_text(size=12, hjust=0.5)
   )
 
 #Add Delta Smelt picture to plot
@@ -372,6 +372,49 @@ plot_deltasmelt <- plot_deltasmelt+
 #     width=8, res=300, pointsize=10,compression="lzw")
 #plot_deltasmelt
 #dev.off()
+
+###Create another figure for Temperature anomaly at 1.5 C
+deltasmelt_data_warm<-newdata_edit %>% filter(Season == "Summer",Temperature_anomaly_spatial==1.5) %>% 
+  mutate(Temperature_prediction=Temperature_prediction+1.5) %>%
+  mutate(Suitability_DSM=case_when(Temperature_prediction<20 ~ "<20 at surface", # Create a variable for smelt suitability index
+                                   Temperature_prediction>=20 & Temperature_prediction<=25 ~ "20-25 at surface",
+                                   Temperature_prediction>25 & Temperature_prediction+Prediction>25~ ">25 at surface and bottom",
+                                   Temperature_prediction>25 & Temperature_prediction+Prediction<=25~ ">25 at surface but <=25 at bottom"))
+
+deltasmelt_data_warm$Suitability_DSM<-factor(deltasmelt_data_warm$Suitability_DSM, levels = c( "20-25 at surface", ">25 at surface but <=25 at bottom",">25 at surface and bottom","<20 at surface"))
+
+plot_deltasmelt_warm <-ggplot(data=deltasmelt_data_warm)+
+  geom_sf(aes(colour=Suitability_DSM),pch=15)+
+  geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
+  #geom_raster(aes(x=x,y=y,fill=Suitability_DSM))+
+  #geom_sf(data = deltasmelt_fill, color="red", fill="black") +
+  scale_color_manual(values=color_smelt,labels = c(expression("20-25"~degree * C *" at surface"), expression(">25"~degree * C *" at surface, but"<="25"~degree * C * " at bottom"),expression(">25"~degree * C *" at surface and bottom")))+
+  guides(colour = guide_legend(override.aes = list(size=3)))+
+  theme_void()+
+  labs(title="D) Thermal landscape for Delta Smelt (July 15th)\n Temperature anomaly of +1.5 degrees")+
+  coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(),
+        axis.title.x = element_text(size = 7, angle = 00), 
+        axis.title.y = element_text(size = 7, angle = 90),
+        strip.text = element_text(size = 7),
+        legend.text = element_text(size=9),
+        #legend.key.size = unit(0.5, "lines"),
+        #legend.key.width = unit(1.2,"lines"),
+        legend.position = c(0.22, 0.1),
+        legend.margin = margin(0.2, 0.2, 0.2, 0.2, "cm"), 
+        legend.background = element_rect(fill = "white",color="black"),
+        legend.title = element_blank(),
+        plot.title = element_text(size=12, hjust=0.5)
+  )
+
+plot_deltasmelt_warm <- plot_deltasmelt_warm+
+  inset_element(p = pic_deltasmelt,
+                left = 0.1,
+                bottom = 0.7,
+                right = 0.5,
+                top = 0.9)
 
 
 ######################################################################################################
@@ -418,7 +461,7 @@ plot_chinooksalmon <-ggplot(data=chinooksalmon_data)+
                                                    expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at bottom, but " >= "20"~degree * C * " at bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
-  #labs(title="Chinook Salmon Temperature Suitability")+
+  labs(title="A) Thermal landscape for Chinook Salmon (May 15th) \n 2011-2019 average conditions")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
@@ -429,11 +472,11 @@ plot_chinooksalmon <-ggplot(data=chinooksalmon_data)+
         legend.text = element_text(size=9),
         #legend.key.size = unit(0.5, "lines"),
         #legend.key.width = unit(1.2,"lines"),
-        legend.position = c(0.2, 0.1),
+        legend.position = c(0.22, 0.1),
         legend.margin = margin(0.2, 0.2, 0.2, 0.2, "cm"), 
         legend.background = element_rect(fill = "white",color="black"),
         legend.title = element_blank(),
-        plot.title = element_text(size=8, hjust=0.5)
+        plot.title = element_text(size=12, hjust=0.5)
   )
 
 #Add Chinook Salmon picture
@@ -451,11 +494,70 @@ plot_chinooksalmon<- plot_chinooksalmon+
 #plot_chinooksalmon
 #dev.off()
 
+###Create another figure for Temperature anomaly at 1.5 C
+
+chinooksalmon_data_warm <- WQ_pred_grid(Julian_days_range=yday(ymd(paste("2001", "05", "15", sep="-"))),Temperature_anomaly_range = 1.5) 
+chinooksalmon_data_warm$Temperature_prediction=predict(temperature_anomaly_GAM_spatial,chinooksalmon_data_warm)+1.5
+chinooksalmon_data_warm_predictions <- predict(model_04_soapfilm_xy_jd_ta, newdata=chinooksalmon_data_warm, type="response",discrete=F, se.fit=TRUE)
+
+
+chinooksalmon_data_warm<-chinooksalmon_data_warm %>%
+  mutate(Prediction=chinooksalmon_data_warm_predictions$fit)%>%
+  mutate(SE=chinooksalmon_data_warm_predictions$se.fit,
+         L95=Prediction-SE*1.96,
+         U95=Prediction+SE*1.96) %>% 
+  mutate(Suitability_CHN=case_when(Temperature_prediction<20 & Temperature_prediction+Prediction<20 ~ "<20 at surface and bottom", # Create a variable for smelt suitability index
+                                   Temperature_prediction>=20 & Temperature_prediction+Prediction<20~ ">=20 at surface but <20 at bottom",
+                                   Temperature_prediction>=20 & Temperature_prediction+Prediction>=20 ~ ">=20 at surface and bottom",
+                                   Temperature_prediction<20 & Temperature_prediction+Prediction>=20~ "<20 at surface but >=20 at bottom"))
+
+chinooksalmon_data_warm<-chinooksalmon_data_warm[!is.na(chinooksalmon_data_warm$Prediction),]
+
+unique(chinooksalmon_data_warm$Suitability_CHN)
+chinooksalmon_data_warm$Suitability_CHN<-factor(chinooksalmon_data_warm$Suitability_CHN, levels = c( "<20 at surface and bottom", ">=20 at surface but <20 at bottom",">=20 at surface and bottom","<20 at surface but >=20 at bottom"))
+
+plot_chinooksalmon_warm <-ggplot(data=chinooksalmon_data_warm)+
+  geom_sf(aes(colour=Suitability_CHN),pch=15)+
+  geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
+  scale_color_manual(values=color_salmon,labels = c(expression("<20"~degree * C *" at surface and bottom"), expression("">="20"~degree * C *" at surface, but <20"~degree * C * " at bottom"),
+                                                    expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at bottom, but " >= "20"~degree * C * " at bottom")))+
+  guides(colour = guide_legend(override.aes = list(size=3)))+
+  theme_void()+
+  labs(title="C) Thermal landscape for Chinook Salmon (May 15th)\n Temperature anomaly of +1.5 degrees")+
+  coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(),
+        axis.title.x = element_text(size = 7, angle = 00), 
+        axis.title.y = element_text(size = 7, angle = 90),
+        strip.text = element_text(size = 7),
+        legend.text = element_text(size=9),
+        #legend.key.size = unit(0.5, "lines"),
+        #legend.key.width = unit(1.2,"lines"),
+        legend.position = c(0.22, 0.1),
+        legend.margin = margin(0.2, 0.2, 0.2, 0.2, "cm"), 
+        legend.background = element_rect(fill = "white",color="black"),
+        legend.title = element_blank(),
+        plot.title = element_text(size=12, hjust=0.5)
+  )
+
+#Add Chinook Salmon picture
+plot_chinooksalmon_warm<- plot_chinooksalmon_warm+
+  inset_element(p = pic_chinooksalmon,
+                left = 0.1,
+                bottom = 0.7,
+                right = 0.5,
+                top = 0.9)
+
+
+
 #Print out smelt and salmon figure side by side
-tiff(filename=file.path(results_root,"Figure_Temperature_Suitability.tiff"), units="in",type="cairo", bg="white", height=8, 
-     width=14, res=300, pointsize=10,compression="lzw")
-ggarrange(plot_chinooksalmon, plot_deltasmelt, ncol=2, nrow=1,labels = c("A - Thermal landscape for Chinook Salmon (May 15th)","B - Thermal landscape for Delta Smelt (July 15th)"),hjust=-0.1)
+tiff(filename=file.path(results_root,"Figure_Temperature_Suitability.tiff"), units="in",type="cairo", bg="white", height=13, 
+     width=11, res=300, pointsize=10,compression="lzw")
+ggarrange(plot_chinooksalmon, plot_deltasmelt, plot_chinooksalmon_warm, plot_deltasmelt_warm, 
+          ncol=2, nrow=2)
 dev.off()
+
 
 ######################################################################################################
 ################# Figure for every month (12x3) ############
