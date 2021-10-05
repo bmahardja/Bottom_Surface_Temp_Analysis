@@ -759,19 +759,19 @@ plot_sig_results_12<-model_results_significance_month_plot(Month_set = "December
 
 #Print out Jan-April figure
 png(filename=file.path(results_root,"Model_significant_results_01-04.png"), units="in",type="cairo", bg="white", height=18, 
-    width=20, res=300, pointsize=20)
+    width=10, res=300, pointsize=20)
 ggarrange(plot_sig_results_01, plot_sig_results_02, plot_sig_results_03, plot_sig_results_04, ncol=1, nrow=4)
 dev.off()
 
 #Print out May-August figure
 png(filename=file.path(results_root,"Model_significant_results_05-08.png"), units="in",type="cairo", bg="white", height=18, 
-    width=20, res=300, pointsize=20)
+    width=10, res=300, pointsize=20)
 ggarrange(plot_sig_results_05, plot_sig_results_06, plot_sig_results_07, plot_sig_results_08, ncol=1, nrow=4)
 dev.off()
 
 #Print out Sep-December figure
 png(filename=file.path(results_root,"Model_significant_results_09-12.png"), units="in",type="cairo", bg="white", height=18, 
-    width=20, res=300, pointsize=20)
+    width=10, res=300, pointsize=20)
 ggarrange(plot_sig_results_09, plot_sig_results_10, plot_sig_results_11, plot_sig_results_12, ncol=1, nrow=4)
 dev.off()
 
