@@ -93,7 +93,7 @@ Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Honker Bay"] <- -1 * 0.15 * 
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Honker Bay"] <- -1 * 0.1 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Confluence"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Confluence"] <- -1 * 0.1 * y_range
-Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Sacramento River"] <- -1 * 0.15 * x_range
+Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower Sacramento River"] <- -1 * 0.25 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower Sacramento River"] <- -1 * 0.1 * y_range
 Delta_centroids$nudge_x[Delta_centroids$SubRegion=="Lower San Joaquin River"] <- -1 * 0.15 * x_range
 Delta_centroids$nudge_y[Delta_centroids$SubRegion=="Lower San Joaquin River"] <- -1 * 0.1 * y_range
@@ -138,7 +138,7 @@ continuous_stations$nudge_y<-0
 
 continuous_stations$nudge_x[continuous_stations$Station=="MRZ"] <- -1 * 0.2 * x_range
 continuous_stations$nudge_y[continuous_stations$Station=="MRZ"] <- -1 * 0.05 * y_range
-continuous_stations$nudge_x[continuous_stations$Station=="MAL"] <- -1 * 0.18 * x_range
+continuous_stations$nudge_x[continuous_stations$Station=="MAL"] <- -1 * 0.0 * x_range
 continuous_stations$nudge_y[continuous_stations$Station=="MAL"] <- -1 * 0.18 * y_range
 continuous_stations$nudge_x[continuous_stations$Station=="ANH"] <- -1 * 0.0 * x_range
 continuous_stations$nudge_y[continuous_stations$Station=="ANH"] <- -1 * 0.15 * y_range
@@ -152,16 +152,16 @@ fig1<-ggplot() + theme_bw()+
   geom_sf(data=continuous_stations, fill="red", size=2.2, shape=24)+
   geom_sf(data = Delta,color="navy",fill=NA) + 
   geom_label_repel(data=continuous_stations, aes(x=Longitude,y=Latitude,label=StationName), nudge_x=continuous_stations$nudge_x, nudge_y=continuous_stations$nudge_y
-                   ,segment.alpha=0.7,color="red4", size=3.5,segment.linetype="dashed")+
+                   ,segment.alpha=0.7,color="red4", size=3.7,segment.linetype="dashed")+
   geom_text_repel(data=Delta_centroids, aes(x=X,y=Y,label=SubRegion), nudge_x = Delta_centroids$nudge_x, nudge_y = Delta_centroids$nudge_y, 
-                  segment.linetype="dotted", segment.alpha=0.7, color="blue4", size=3)+
+                  segment.linetype="dotted", segment.alpha=0.7, color="blue4", size=3.3)+
   coord_sf(xlim = c(-122.3, -121.10), ylim = c(37.65, 38.61),crs=crsLONGLAT)  +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          pad_y = unit(1.0, "in"),
                          style = north_arrow_fancy_orienteering) +
   annotation_scale(location = "tr", width_hint = 0.5)+
   #annotate(geom = "point", x = -121.81, y = 37.7, colour = "black", fill="red", size = 2.2,shape=24) + 
-  annotate(geom = "text", x = -122.22, y = 37.85, label="San Francisco Bay",size=3.5,hjust="left") + 
+  annotate(geom = "text", x = -122.22, y = 37.85, label="San Francisco Bay",size=3.7,hjust="left") + 
   geom_segment(data=tibble(x=-122.22, y=37.85, xend=-122.3, yend=37.85), aes(x=x, y=y, xend=xend, yend=yend), arrow=arrow(length = unit(0.01, "npc")), size=0.5)+
   theme(legend.position = c(0.1,0.9),legend.box.background = element_rect(colour = "black"),
         axis.text.x = element_text(size=12, color="black"),axis.text.y = element_text(size=12, color="black"),
