@@ -50,6 +50,9 @@ Delta <- Delta%>%  st_transform(crs=4326)%>%
 #Read water boundaries shape file
 Water<-st_read(file.path(data_root,"Shapefiles for Map Figure","Hydro_poly_UTM10Copy.shp"))
 
+#Read legal delta boundaries shape file
+LegalDelta<-st_read(file.path(data_root,"Shapefiles for Map Figure","Legal_Delta_Boundary.shp"))
+
 #Add crs
 crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
 
@@ -148,6 +151,7 @@ continuous_stations$nudge_y[continuous_stations$Station=="RRI"] <- -1 * 0.04 * y
 #Create the map
 fig1<-ggplot() + theme_bw()+
   geom_sf(data = Water, fill="cadetblue1", color="cadetblue1") +
+  geom_sf(data = LegalDelta, fill=NA, color="grey",alpha=0.1, size=2) +
   geom_sf(data=stations_sample_size,shape=19, size=2,aes(color=SampleSize))+
   geom_sf(data=continuous_stations, fill="red", size=2.2, shape=24)+
   geom_sf(data = Delta,color="navy",fill=NA) + 

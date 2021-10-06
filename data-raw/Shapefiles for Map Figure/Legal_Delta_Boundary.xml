@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><metadata>
+    <idinfo>
+        <citation>
+            <citeinfo>
+                <origin/>
+                <title>Legal Delta Boundary</title>
+                <onlink>https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_LegalDeltaBoundary/FeatureServer</onlink>
+            </citeinfo>
+        </citation>
+        <descript>
+            <abstract>Department of Water Resources (DWR), Geodetic Branch, Cadastral Surveys reviewed this boundary in July, 2009, and agreed with the linework along with the description below as produced by Joel Dudas in 2002. This boundary was originally produced under the direction of Ray Irving, LS 3278 in August, 1993 (then Chief of the Geodetic Branch) at the request of Margit Aramburu with the Delta Protection Commission. The boundary, at that time, was paper form. The details of how it was prepared are described in the Memorandum dated July 29, 1994, along with additional correspondence between Ray Irving and Margit Aramburu on comments, changes &amp;amp; revisions during the process and are on file at Cadastral Surveys, DWR. (End 2009)*** Delta boundary version 2002.4 Delineates the legal Delta established under the Delta Protection Act (Section 12220 of the Water Code) passed in 1959. This boundary file has been reviewed by a variety of relevant professionals and is considered to be accurate. The exact accuracy is somewhat uncertain, but can be considered acceptable for mapping at 1:24000. The original topographic maps containing the drawn delta border were scanned from the Department of Water Resources. Images were registered to 1:24,000 USGS DRG's in ArcView (ESRI) utilizing imagewarp extension. The Delta boundary was digitized from the registered images. Accuracy within acceptable 7.5 Minute USGS map accuracy standards (1:24000 scale). The original legal boundary maps obtained from the Delta Protection Commission were compiled by DWR Land &amp;amp; Right of Way sometime in the early 1980's. They were based from the legal description in section 12220 of the Water Code, with ambiguities in the Code addressed by the individuals involved in the mapping project at that time. One revision was made to the original maps in the vicinity of Point Pleasant, and is the only difference between this and the 4.2001 version of the legal Delta boundary Arc/INFO coverage.</abstract>
+            <purpose>This data represents the Delta Legal boundary as established under the Delta Protection Act (Section 12220 of the California Water Code passed in 1959.</purpose>
+        </descript>
+        <keywords>
+            <theme>
+                <themekt>None</themekt>
+                <themekey>planning</themekey>
+                <themekey>California</themekey>
+                <themekey>Delta</themekey>
+                <themekey>boundaries</themekey>
+                <themekey>2002</themekey>
+                <themekey>Cadastre</themekey>
+                <themekey>California Natural Resources Agency</themekey>
+                <themekey>CAOpenData</themekey>
+                <themekey>California Department of Water Resources</themekey>
+                <themekey>Legal</themekey>
+                <themekey>Cadastre July 2002</themekey>
+                <themekey>Planning</themekey>
+                <themekey>planningCadastrem</themekey>
+            </theme>
+        </keywords>
+        <accconst>Other Constraints</accconst>
+        <useconst>DWR makes no warranties or guarantees —either expressed or implied — as to the completeness, accuracy, or correctness of the data. DWR neither accepts nor assumes liability arising from or for any incorrect, incomplete, or misleading subject data.</useconst>
+        <datacred>California Department of Water Resources. Contact: gis@water.ca.gov</datacred>
+    </idinfo>
+    <metainfo>
+        <metd>20210630</metd>
+        <metc>
+            <cntinfo>
+                <cntorgp>
+                    <cntorg>California Department of Water Resources</cntorg>
+                </cntorgp>
+            </cntinfo>
+        </metc>
+        <metstdn>FGDC Content Standard for Digital Geospatial Metadata</metstdn>
+        <metstdv>FGDC-STD-001-1998</metstdv>
+        <mettc>local time</mettc>
+    </metainfo>
+</metadata>
