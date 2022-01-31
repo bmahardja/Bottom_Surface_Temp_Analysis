@@ -203,6 +203,7 @@ plot_surface_full<-ggarrange(plot_winter_surface, plot_spring_surface, plot_summ
 #Check limits for temperature difference predictions
 summary(newdata_edit$Prediction)
 
+
 ###########################################################################
 #Create function to create ggplot for model results based on season
 
@@ -271,43 +272,48 @@ newdata_edit$sign<-sign(newdata_edit$L99)
 #Remove NAs
 newdata_edit<-newdata_edit[!is.na(newdata_edit$Prediction),]
 
+#Add categories for significant differences and whether it's +/-
+newdata_edit <- newdata_edit %>% mutate(color_category = case_when(
+  significance==0 ~ "Not significant", 
+  significance==1&sign==-1 ~ "Significantly cooler than surface",
+  significance==1&sign==1 ~ "Significantly warmer than surface"
+), Season_name = case_when(
+  Season=="Winter" ~ "Winter (Jan 15)",
+  Season== "Summer" ~ "Summer (Jul 15)",
+  Season== "Spring" ~ "Spring (Apr 15)",
+  Season== "Fall" ~ "Fall (Oct 15)"
+))
+
+newdata_edit$color_category<-as.factor(newdata_edit$color_category)
+newdata_edit$Season_name<-factor(newdata_edit$Season_name, levels = c("Winter (Jan 15)", "Spring (Apr 15)", "Summer (Jul 15)","Fall (Oct 15)"))
+
 ##################################################
 #Create figure for model results
 
-model_results_significance_plot<-function(Full_data=newdata_edit,
-                                          Season_set="Winter",Season_name="Winter (Jan 15)"
-){
-  newplot<-ggplot()+
-    geom_sf(data=(Full_data %>% filter(Season==Season_set,significance==0)),colour="white",pch=15,alpha=0.8)+
-    geom_sf(data=(Full_data %>% filter(Season==Season_set,significance==1,sign==-1)),colour="blue",pch=15,alpha=0.8)+
-    geom_sf(data=(Full_data %>% filter(Season==Season_set,significance==1,sign==1)),colour="red",pch=15,alpha=0.8)+
-    theme_dark()+
-    facet_grid(~Temperature_anomaly_category)+
-    theme(axis.text.x = element_blank(), 
-          axis.text.y = element_blank(), 
-          axis.ticks = element_blank(),
-          axis.title.x = element_text(size = 22, angle = 00), 
-          axis.title.y = element_text(size = 22, angle = 90),
-          strip.text = element_text(size = 20),
-          legend.text = element_text(size=18),
-          legend.key.size = unit(1.5, 'cm'),
-          plot.title = element_text(size=22)
-    )+    
-    labs(y=Season_name,colour=NULL)
-  return(newplot)
-}
-
-plot_summer_sig_results<-model_results_significance_plot(Season_set = "Summer",Season_name="Summer (Jul 15)")
-plot_winter_sig_results<-model_results_significance_plot(Season_set = "Winter",Season_name="Winter (Jan 15)")
-plot_spring_sig_results<-model_results_significance_plot(Season_set = "Spring",Season_name="Spring (Apr 15)")
-plot_fall_sig_results<-model_results_significance_plot(Season_set = "Fall",Season_name="Fall (Oct 15)")
-
-plot_results_significant_full<-ggarrange(plot_winter_sig_results, plot_spring_sig_results, plot_summer_sig_results, plot_fall_sig_results, ncol=1, nrow=4)
+plot_results_significant_full<-ggplot()+
+  geom_sf(data=newdata_edit,aes(colour=color_category),pch=15,alpha=0.8)+
+  scale_colour_manual(values = c("white","blue","red"))+
+  theme_dark()+
+  facet_grid(Season_name~Temperature_anomaly_category, switch="y")+
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks = element_blank(),
+        axis.title.x = element_text(size = 22, angle = 00), 
+        axis.title.y = element_text(size = 22, angle = 90),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size=18),
+        legend.key.size = unit(1.5, 'cm'),
+        plot.title = element_text(size=22),
+        legend.position="top",
+        legend.direction = "vertical"
+  ) + 
+  labs(colour=NULL)+
+  guides(color = guide_legend(override.aes = list(size=7)))
 
 #Print out figure
 tiff(filename=file.path(results_root,"Model_results_significant.tiff"), units="in",type="cairo", bg="white", height=18, 
      width=10, res=500, pointsize=20,compression="lzw")
-annotate_figure(plot_results_significant_full, top = text_grob("Temperature difference from surface at p<0.01\n Blue:Cooler than surface \nRed:Warmer than surface", size = 20)) 
+plot_results_significant_full
 dev.off()
 
 ######################################################################################################
