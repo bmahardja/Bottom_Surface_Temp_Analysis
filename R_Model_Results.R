@@ -464,7 +464,7 @@ plot_chinooksalmon <-ggplot(data=chinooksalmon_data)+
   geom_sf(aes(colour=Suitability_CHN),pch=15)+
   geom_sf(data = Water, color=alpha("black",0.3),fill=NA) +
   scale_color_manual(values=color_salmon,labels = c(expression("<20"~degree * C *" at surface and bottom"), expression("">="20"~degree * C *" at surface, but <20"~degree * C * " at bottom"),
-                                                   expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at bottom, but " >= "20"~degree * C * " at bottom")))+
+                                                   expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at surface, but " >= "20"~degree * C * " at bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
   labs(title="A) Thermal landscape for Chinook Salmon (May 15th) \n 2011-2019 average conditions")+
