@@ -333,7 +333,7 @@ deltasmelt_data<-newdata_edit %>% filter(Season == "Summer",Temperature_anomaly_
 deltasmelt_data$Suitability_DSM<-factor(deltasmelt_data$Suitability_DSM, levels = c( "20-25 at surface", ">25 at surface but <=25 at bottom",">25 at surface and bottom","<20 at surface"))
 
 #Add custom color set
-color_smelt<- c('#ffe119','#dcbeff','#e6194B','#f58231')
+color_smelt<- c('#ffe119','#dcbeff','#e6194B','#3111a6')
 
 #Photo of Delta Smelt
 pic_deltasmelt <- readPNG(file.path(data_root, "DSM_edit.png"), native = TRUE)
@@ -453,7 +453,7 @@ unique(chinooksalmon_data$Suitability_CHN)
 chinooksalmon_data$Suitability_CHN<-factor(chinooksalmon_data$Suitability_CHN, levels = c( "<20 at surface and bottom", ">=20 at surface but <20 at bottom",">=20 at surface and bottom","<20 at surface but >=20 at bottom"))
 
 
-color_salmon <- c('#ffe119','#dcbeff','#e6194B','#f58231')
+color_salmon <- c('#ffe119','#dcbeff','#e6194B','#3111a6')
 
 
 #Photo of Chinook Salmon
