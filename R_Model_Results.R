@@ -245,8 +245,8 @@ plot_results_full<-ggarrange(plot_winter_results, plot_spring_results, plot_summ
 #Print out main results figure
 tiff(filename=file.path(results_root,"Model_full_results.tiff"), units="in",type="cairo", bg="white", height=15, 
     width=20, res=300, pointsize=10,compression="lzw")
-ggarrange(annotate_figure(plot_surface_full, top = text_grob("A) Surface temperature", face = "bold", size = 20)), 
-          annotate_figure(plot_results_full, top = text_grob("B) Temperature difference from surface", face = "bold", size = 20)), 
+ggarrange(annotate_figure(plot_surface_full, top = text_grob("a) Surface temperature", face = "bold", size = 20)), 
+          annotate_figure(plot_results_full, top = text_grob("b) Temperature difference from surface", face = "bold", size = 20)), 
           ncol=2, nrow=1)
 dev.off()
 
@@ -347,7 +347,7 @@ plot_deltasmelt <-ggplot(data=deltasmelt_data)+
   scale_color_manual(values=color_smelt,labels = c(expression("20-25"~degree * C *" at surface"), expression(">25"~degree * C *" at surface, but"<="25"~degree * C * " at bottom"),expression(">25"~degree * C *" at surface and bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
-  labs(title="B) Thermal landscape for Delta Smelt (July 15th) \n 2011-2019 average conditions")+
+  labs(title="b) Thermal landscape for Delta Smelt (July 15th) \n 2011-2019 average conditions")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
@@ -397,7 +397,7 @@ plot_deltasmelt_warm <-ggplot(data=deltasmelt_data_warm)+
   scale_color_manual(values=color_smelt,labels = c(expression("20-25"~degree * C *" at surface"), expression(">25"~degree * C *" at surface, but"<="25"~degree * C * " at bottom"),expression(">25"~degree * C *" at surface and bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
-  labs(title="D) Thermal landscape for Delta Smelt (July 15th)\n Temperature anomaly of +1.5 degrees")+
+  labs(title="d) Thermal landscape for Delta Smelt (July 15th)\n Temperature anomaly of +1.5 degrees")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
@@ -467,7 +467,7 @@ plot_chinooksalmon <-ggplot(data=chinooksalmon_data)+
                                                    expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at surface, but " >= "20"~degree * C * " at bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
-  labs(title="A) Thermal landscape for Chinook Salmon (May 15th) \n 2011-2019 average conditions")+
+  labs(title="a) Thermal landscape for Chinook Salmon (May 15th) \n 2011-2019 average conditions")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
@@ -529,7 +529,7 @@ plot_chinooksalmon_warm <-ggplot(data=chinooksalmon_data_warm)+
                                                     expression("">="20"~degree * C *" at surface and bottom"),expression("<20"~degree * C *" at surface, but " >= "20"~degree * C * " at bottom")))+
   guides(colour = guide_legend(override.aes = list(size=3)))+
   theme_void()+
-  labs(title="C) Thermal landscape for Chinook Salmon (May 15th)\n Temperature anomaly of +1.5 degrees")+
+  labs(title="c) Thermal landscape for Chinook Salmon (May 15th)\n Temperature anomaly of +1.5 degrees")+
   coord_sf(xlim = c(-122.2, -121.37), ylim = c(37.8, 38.61),crs=crsLONGLAT)  +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
